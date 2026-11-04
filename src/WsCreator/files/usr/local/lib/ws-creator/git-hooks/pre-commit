@@ -15,7 +15,7 @@ fi
 
 if denylist_applies; then
     { git diff --cached --name-only --diff-filter=ACMR
-      git diff --cached --no-color -U0 --diff-filter=ACMR | grep '^+' | grep -v '^+++'
+      git diff --cached --no-color -U0 --diff-filter=ACMR | sed -n '/^+++/d; /^+/p'   # sed : 0 même sans ligne ajoutée (grep vide = échec avec pipefail)
     } | denylist_check "le contenu indexé" || status=1
 fi
 
