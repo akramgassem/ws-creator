@@ -1,0 +1,24 @@
+#cloud-config
+# Fragment base, commun à toutes les machines : rien qui dépende de l'une d'elles. Ce qui est
+# propre à une machine (utilisateur, droits, wsl.conf, paquets) est dans machines/<nom>/user-data.yaml.
+merge_how: 'dict(recurse_array,no_replace)+list(append)'
+# Ce qui doit valoir à chaque passage, même sans ce fragment (apply -Only), est dans la config
+# système : files/etc/cloud/cloud.cfg.d/99_zz-ws-creator.cfg (sources, nom d'hôte, clés SSH).
+
+package_update: true
+packages: [sudo, curl, git, ca-certificates]
+
+write_files:
+  # Falcon empêche la session systemd de l'utilisateur : sans ce réglage, l'erreur qui en
+  # résulte est diffusée dans tous les terminaux à chaque connexion.
+  - path: /etc/systemd/journald.conf.d/50-ws-creator.conf
+    content: |
+      [Journal]
+      ForwardToWall=no
+
+runcmd:
+  - systemctl restart systemd-journald   # relit 50-ws-creator.conf
+  # Falcon empêche la session systemd de l'utilisateur : on ne demande pas à systemd de la
+  # lancer au démarrage (linger), elle échouerait. L'utilisateur de la machine est l'uid 1000.
+  - |
+    loginctl disable-linger "$(getent passwd 1000 | cut -d: -f1)"

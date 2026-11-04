@@ -1,0 +1,51 @@
+#cloud-config
+# agent-sandbox : un agent y travaille. Ni sudo ni socket podman (l'agent n'est pas root),
+# aucun accès au disque Windows. Côté Windows (image, ports, scripts) : machine.psd1.
+merge_how: 'dict(recurse_array,no_replace)+list(append)'
+
+users:
+  - name: dev
+    shell: /bin/bash
+    sudo: null   # pas d'administration : ni groupe sudo, ni règle (ni groupe podman)
+    # clé publique Windows (machine.psd1 : Ssh.PublicKey, ws-creator vérifie qu'elle concorde)
+    # à remplacer par le contenu de ~\.ssh\id_ed25519.pub
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIReplaceWithTheContentOfYourOwnPublicKey00
+
+write_files:
+  # sshd (fragment ssh) : port unique par machine (machine.psd1 : Ssh.Port), seul utilisateur admis
+  - path: /etc/ssh/sshd_config.d/60-ws-creator-machine.conf
+    content: |
+      Port 2223
+      AllowUsers dev
+  # podman (fragment podman) : sous-réseau unique par machine (machine.psd1 : PodmanSubnet)
+  - path: /etc/containers/containers.conf.d/60-ws-creator-machine.conf
+    content: |
+      [network]
+      default_subnet = "10.89.23.0/24"
+  # lu par WSL au lancement suivant de la distro (ws-creator l'arrête après cloud-init)
+  - path: /etc/wsl.conf
+    content: |
+      [boot]
+      systemd=true
+      command=mount --make-rshared /
+      [network]
+      hostname=agent-sandbox
+      [user]
+      default=dev
+      [automount]
+      enabled=false
+      [interop]
+      enabled=false
+      appendWindowsPath=false
+  # outils de la machine (fragment mise) ; defer : posé après la création de l'utilisateur
+  - path: /home/dev/.config/mise/config.toml
+    owner: dev:dev
+    defer: true
+    content: |
+      [tools]
+      jq = "latest"
+      ripgrep = "latest"   # rg
+      fd = "latest"
+      yq = "latest"
+      gitleaks = "latest"  # secrets ; utilisé par le hook pre-commit (fragment guard)

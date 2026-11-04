@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# État de la machine en quelques lignes : conteneurs, GitHub, dépôts de ~/src et ~/scratch, miettes.
+# Lisible par un humain comme par un agent (hook de démarrage de session). Installé par
+# le module guard. N'interroge pas le réseau, sauf `gh auth status`.
+set -uo pipefail
+home=$(getent passwd "$(id -un)" | cut -d: -f6)
+export PATH="$home/.local/share/mise/shims:$PATH"
+
+echo "Machine $(hostname) ($(cat /etc/ws-creator-profile 2>/dev/null || echo 'hors ws-creator'))"
+
+# services des projets (compose.yaml de chaque dépôt) : ce qui tourne, si le socket est accessible
+if command -v docker >/dev/null && running=$(docker ps --format '{{.Names}}' 2>/dev/null); then
+    running=${running//$'\n'/ }
+    echo "Conteneurs : ${running:-aucun}"
+fi
+
+if command -v gh >/dev/null; then
+    if gh auth status --hostname github.com >/dev/null 2>&1; then echo "GitHub (gh) : connecté"
+    else echo "GitHub (gh) : NON CONNECTÉ (gh auth login)"; fi
+fi
+if command -v chezmoi >/dev/null && [ ! -d "$home/.local/share/chezmoi" ]; then
+    echo "Dotfiles : non appliqués (gh auth login, puis chezmoi init --apply <compte>)"
+fi
+
+echo "Dépôts (branche, état local ; sans git fetch) :"
+found=0
+while read -r git; do
+    found=1
+    repo=${git%/.git}
+    branch=$(git -C "$repo" branch --show-current 2>/dev/null)
+    [ -n "$branch" ] || branch="(détachée $(git -C "$repo" rev-parse --short HEAD 2>/dev/null))"
+    notes=()
+    n=$(git -C "$repo" status --porcelain 2>/dev/null | wc -l)
+    [ "$n" -gt 0 ] && notes+=("$n fichier(s) modifié(s)")
+    track=$(git -C "$repo" for-each-ref --format='%(upstream:short)|%(upstream:track)' "refs/heads/$branch" 2>/dev/null)
+    case "$track" in
+        "") ;;
+        "|"*) notes+=("sans upstream") ;;
+        *"[gone]"*) notes+=("upstream supprimé (PR fusionnée ?)") ;;
+        *"["*) notes+=("${track#*|}") ;;
+    esac
+    n=$(git -C "$repo" stash list 2>/dev/null | wc -l)
+    [ "$n" -gt 0 ] && notes+=("$n stash")
+    line="  ${repo#"$home"/} : $branch"
+    [ ${#notes[@]} -gt 0 ] && line="$line, $(IFS=,; echo "${notes[*]}" | sed 's/,/, /g')"
+    echo "$line"
+done < <(find "$home/src" "$home/scratch" -maxdepth 5 -name .git -prune 2>/dev/null | sort)
+[ $found = 1 ] || echo "  (aucun)"
+
+# miettes laissées par les sessions (signaux locaux seulement) : /menage les ramasse
+command -v machine-crumbs >/dev/null && machine-crumbs --local --summary
+true

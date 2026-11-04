@@ -1,0 +1,7 @@
+distros/
+images/
+# réglages guard (motifs du client) et noms interdits : privés
+machines/*/files/etc/ws-creator/
+
+# machines locales (ou WS_CREATOR_MACHINES vers un dossier de config à part)
+machines/

@@ -1,0 +1,23 @@
+#cloud-config
+# Fragment mise : mise et les outils de sa config pour l'utilisateur de la machine (uid 1000).
+# La config (~/.config/mise/config.toml) est posée par machines/<nom>/user-data.yaml.
+# runcmd repasse à chaque rejeu de cloud-init : chaque commande vérifie avant d'agir.
+merge_how: 'dict(recurse_array,no_replace)+list(append)'
+
+runcmd:
+  - |
+    set -e
+    u=$(getent passwd 1000 | cut -d: -f1)
+    home=$(getent passwd 1000 | cut -d: -f6)
+    # write_files crée les dossiers parents en root
+    chown -R "$u:$u" "$home/.config"
+    # binaire mise (installeur officiel, dans ~/.local/bin de l'utilisateur)
+    [ -x "$home/.local/bin/mise" ] || sudo -u "$u" -H bash -c 'curl -fsSL https://mise.run | sh'
+    # activation dans les shells interactifs, une seule fois
+    line='eval "$(~/.local/bin/mise activate bash)"'
+    grep -qxF "$line" "$home/.bashrc" || echo "$line" >> "$home/.bashrc"
+    # shims pour les commandes non interactives (ssh 'cmd') : en tête de .bashrc, avant le
+    # « return » d'Ubuntu qui arrête les shells non interactifs
+    shims='export PATH="$HOME/.local/share/mise/shims:$PATH"'
+    grep -qxF "$shims" "$home/.bashrc" || sed -i "1i $shims" "$home/.bashrc"
+    sudo -u "$u" -H env MISE_YES=1 "$home/.local/bin/mise" install

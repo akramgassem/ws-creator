@@ -1,0 +1,21 @@
+# Publication sur la PowerShell Gallery quand on pousse un tag vX.Y.Z égal à ModuleVersion
+# (secret PSGALLERY_API_KEY : clé d'API du compte powershellgallery.com, portée WsCreator)
+name: release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Vérifier la version, puis publier
+        shell: pwsh
+        env:
+          PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+        run: |
+          $version = (Import-PowerShellDataFile src/WsCreator/WsCreator.psd1).ModuleVersion
+          if ("v$version" -ne $env:GITHUB_REF_NAME) { throw "tag $env:GITHUB_REF_NAME != ModuleVersion $version" }
+          Publish-PSResource -Path src/WsCreator -Repository PSGallery -ApiKey $env:PSGALLERY_API_KEY

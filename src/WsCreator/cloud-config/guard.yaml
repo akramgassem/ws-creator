@@ -1,0 +1,25 @@
+#cloud-config
+# Fragment guard : garde-fous valables pour tout ce qui passe par git, humain ou agent.
+# Les fichiers viennent de files/ (usr/local/bin/machine-*, usr/local/lib/ws-creator/git-hooks/) ;
+# la skill /menage (usr/local/share/ws-creator/claude/skills/) est posée dans ~/.claude par le module agent ;
+# les réglages de la machine (etc/ws-creator/guard.conf, etc/ws-creator/denylist.sha256) de
+# machines/<nom>/files/. Ici : droits, hooks de toute la machine, config git système.
+merge_how: 'dict(recurse_array,no_replace)+list(append)'
+
+runcmd:
+  - |
+    set -e
+    lib=/usr/local/lib/ws-creator/git-hooks
+    hooks=/etc/ws-creator/hooks
+    chmod 755 /usr/local/bin/machine-state /usr/local/bin/machine-leftovers /usr/local/bin/machine-crumbs \
+        /usr/local/bin/machine-prune-branch "$lib"/*
+    # Tous les hooks passent par dispatch, qui enchaîne avec ceux du dépôt. reference-transaction
+    # n'y est pas : appelé à chaque mise à jour de référence, il ralentirait tout git.
+    rm -rf "$hooks"
+    mkdir -p "$hooks"
+    for h in applypatch-msg pre-applypatch post-applypatch pre-commit pre-merge-commit \
+        prepare-commit-msg commit-msg post-commit pre-rebase post-checkout post-merge \
+        pre-push post-rewrite pre-auto-gc push-to-checkout; do
+        ln -s "$lib/dispatch" "$hooks/$h"
+    done
+    git config --system core.hooksPath "$hooks"

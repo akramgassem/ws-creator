@@ -1,0 +1,24 @@
+# Tests et lint du module à chaque push et PR (runner Windows : le module exige Windows et pwsh)
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pester et PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Install-PSResource -Name Pester, PSScriptAnalyzer -TrustRepository -Quiet
+          Import-Module Pester -MinimumVersion 5.0
+          Invoke-ScriptAnalyzer -Path src -Recurse -Settings PSScriptAnalyzerSettings.psd1 -EnableExit
+          $c = New-PesterConfiguration
+          $c.Run.Path = 'tests'
+          $c.Run.Exit = $true
+          $c.Output.Verbosity = 'Detailed'
+          Invoke-Pester -Configuration $c

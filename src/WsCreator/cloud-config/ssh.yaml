@@ -1,0 +1,27 @@
+#cloud-config
+# Fragment ssh : sshd sur la boucle locale seulement. On y entre par wsl.exe + nc (ProxyCommand
+# de l'alias que ws-creator écrit côté Windows), jamais par le réseau : en WSL mirrored, 0.0.0.0
+# exposerait le port sur le LAN. Ce que chaque machine décide est dans
+# machines/<nom>/user-data.yaml : port et utilisateur (sshd_config.d/60-ws-creator-machine.conf), clé
+# autorisée (ssh_authorized_keys de users).
+merge_how: 'dict(recurse_array,no_replace)+list(append)'
+
+packages: [openssh-server, netcat-openbsd]
+
+write_files:
+  - path: /etc/ssh/sshd_config.d/50-ws-creator.conf
+    content: |
+      ListenAddress 127.0.0.1
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      PermitRootLogin no
+
+runcmd:
+  - |
+    set -e
+    mkdir -p /run/sshd
+    sshd -t
+    # Ubuntu 24.04 lance sshd par socket sur le port 22 : on passe au service classique
+    systemctl disable --now ssh.socket || true
+    systemctl enable ssh.service
+    systemctl restart ssh.service
