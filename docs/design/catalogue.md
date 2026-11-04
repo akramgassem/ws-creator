@@ -82,15 +82,6 @@ possible, et passer en fragment ce qui sert à plusieurs.
 | `dev` | base, mise, guard, podman, ssh · agent | sudo, groupe podman, outils courants (gh, node, python, uv, jq, rg, fd, yq, gitleaks, lefthook, docker-compose, chezmoi) |
 | `agent-sandbox` | base, mise, guard, podman, ssh · agent | ni sudo ni groupe podman, `automount` et `interop` coupés |
 
-## Alternatives écartées
-
-- **Héritage** (« `dev` plus mes ajouts », comme `FROM`) : cloud-init additionne les listes
-  (utilisateur déclaré deux fois) et WSL ne lit qu'un `/etc/wsl.conf` ; il faudrait un moteur
-  de fusion.
-- **Descripteur** (`template.psd1` qui génère les fichiers) : un schéma à maintenir, qui limite
-  les modèles perso.
-- **Préfixe obligatoire** (`perso/dev`) : plus long, le masquage signalé suffit.
-
 ## Questions ouvertes
 
 - `ws-creator diff <machine>` à partir de la provenance, comme `copier update`.
