@@ -1,7 +1,7 @@
 function Open-WsCreatorCode {
     <#
     .SYNOPSIS
-    Ouvre VS Code (Remote-SSH) sur ~/src de la machine.
+    Opens VS Code (Remote-SSH) on the machine's ~/src.
     #>
     param([Parameter(Mandatory)][string]$Name)
     $m = Get-Machine $Name

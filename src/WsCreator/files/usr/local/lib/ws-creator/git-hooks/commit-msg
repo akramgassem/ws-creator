@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Message de commit : pas d'attribution à un outil d'IA (si la machine le demande),
-# pas de nom interdit.
+# Commit message: no attribution to an AI tool (if the machine asks for it), no forbidden
+# name.
 set -uo pipefail
 . "$(dirname "$(readlink -f "$0")")/common.sh"
 status=0
@@ -8,12 +8,12 @@ msg=$(grep -v '^#' "$1")
 
 if [ "$NO_AI_ATTRIBUTION" = true ] &&
     grep -Eiq '^co-authored-by:.*(claude|anthropic|openai|codex|copilot|gemini|cursor)|generated (with|by) .*(claude|codex|copilot|gemini|cursor|ai\b)|noreply@anthropic\.com' <<< "$msg"; then
-    fail "attribution à un outil d'IA dans le message (Co-Authored-By, « Generated with ») : la retirer"
+    fail "AI tool attribution in the message (Co-Authored-By, \"Generated with\"): remove it"
     status=1
 fi
 
 if denylist_applies; then
-    denylist_check "le message de commit" <<< "$msg" || status=1
+    denylist_check "the commit message" <<< "$msg" || status=1
 fi
 
 exit $status

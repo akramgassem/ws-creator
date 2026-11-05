@@ -1,12 +1,12 @@
-# Tests du module ws-creator (Pester 5+) : Invoke-Pester -Path tests
-# Ce qui ne touche pas à WSL : lecture et validation des machines, sélection -Only, conflits,
-# config SSH Windows, et les règles de structure du dépôt.
+# ws-creator module tests (Pester 5+): Invoke-Pester -Path tests
+# What does not touch WSL: reading and validating machines, -Only selection, conflicts,
+# Windows SSH config, and the repo's structure rules.
 
 BeforeAll {
     $repo = Split-Path -Path $PSScriptRoot -Parent
     Import-Module -Name (Join-Path -Path $repo -ChildPath 'src\WsCreator') -Force
 
-    # dépôt minimal dans TestDrive : un fragment et une machine décrite comme il faut
+    # minimal repo in TestDrive: one fragment and a properly described machine
     function New-TestRepo([string]$Name = 'box', [int]$Port = 2400, [string]$Hostname = $Name, [string]$User = 'dev') {
         New-Item -ItemType Directory -Force -Path "TestDrive:\cloud-config", "TestDrive:\modules", "TestDrive:\ssh", "TestDrive:\machines\$Name" | Out-Null
         Set-Content -Path 'TestDrive:\cloud-config\base.yaml' -Value '#cloud-config'
@@ -31,7 +31,7 @@ write_files:
 }
 
 Describe 'Get-UserDataValue' {
-    It 'lit hostname, default et les utilisateurs de user-data.yaml' {
+    It 'reads hostname, default and the users of user-data.yaml' {
         InModuleScope WsCreator {
             $v = Get-UserDataValue "users:`n  - name: alice`n  - name: bob`n      hostname=m1`n      default=alice`n"
             $v.Hostname | Should -Be 'm1'
@@ -42,8 +42,8 @@ Describe 'Get-UserDataValue' {
 }
 
 Describe 'Get-Machine' {
-    It 'décrit agent-sandbox depuis examples\agent-sandbox' {
-        # la clé publique de l'exemple, posée dans un ~\.ssh de test
+    It 'describes agent-sandbox from examples\agent-sandbox' {
+        # the example's public key, put in a test ~\.ssh
         New-Item -ItemType Directory -Force -Path 'TestDrive:\ssh' | Out-Null
         (Get-Content (Join-Path $repo 'examples\agent-sandbox\user-data.yaml')) -match '^\s*- ssh-ed25519 ' |
             ForEach-Object { $_.Trim().TrimStart('- ') } | Set-Content 'TestDrive:\ssh\id_ed25519.pub'
@@ -62,28 +62,28 @@ Describe 'Get-Machine' {
         }
     }
 
-    Context 'machine de test' {
+    Context 'test machine' {
         BeforeEach { InModuleScope WsCreator { $script:Saved = $script:Root, $script:MachinesDir, $script:SshDir; $t = (Get-PSDrive TestDrive).Root; $script:Root = $t; $script:MachinesDir = Join-Path $t 'machines'; $script:SshDir = Join-Path $t 'ssh' } }
         AfterEach { InModuleScope WsCreator { $script:Root, $script:MachinesDir, $script:SshDir = $script:Saved } }
 
-        It 'refuse un hostname différent du nom du dossier' {
+        It 'rejects a hostname that differs from the folder name' {
             New-TestRepo -Name 'box' -Hostname 'other'
             InModuleScope WsCreator { { Get-Machine 'box' } | Should -Throw '*hostname=other*' }
         }
 
-        It 'refuse un utilisateur par défaut absent de users' {
+        It 'rejects a default user missing from users' {
             New-TestRepo -Name 'box'
             (Get-Content 'TestDrive:\machines\box\user-data.yaml' -Raw) -replace 'default=dev', 'default=eve' |
                 Set-Content 'TestDrive:\machines\box\user-data.yaml'
             InModuleScope WsCreator { { Get-Machine 'box' } | Should -Throw '*default=eve*' }
         }
 
-        It 'refuse une clé publique SSH introuvable' {
+        It 'rejects a missing SSH public key' {
             New-TestRepo -Name 'box'
             InModuleScope WsCreator { { Get-Machine 'box' } | Should -Throw '*public key not found*' }
         }
 
-        It 'refuse un port SSH de user-data.yaml différent de machine.psd1' {
+        It 'rejects an SSH port in user-data.yaml that differs from machine.psd1' {
             New-TestRepo -Name 'box' -Port 2400
             Set-Content -Path 'TestDrive:\ssh\id_ed25519.pub' -Value 'ssh-ed25519 AAAAtest dev@test'
             Set-Content -Path 'TestDrive:\cloud-config\ssh.yaml' -Value '#cloud-config'
@@ -96,7 +96,7 @@ Describe 'Get-Machine' {
 }
 
 Describe 'Select-MachinePart' {
-    It 'garde tout sans -Only, et seulement les noms demandés avec' {
+    It 'keeps everything without -Only, and only the requested names with it' {
         InModuleScope WsCreator {
             $m = @{ Name = 'm'; CloudConfig = @('base', 'mise', 'ssh'); Modules = @('agent') }
             (Select-MachinePart $m @()).CloudConfig | Should -Be @('base', 'mise', 'ssh')
@@ -112,7 +112,7 @@ Describe 'Test-MachineConflict' {
     BeforeEach { InModuleScope WsCreator { $script:Saved = $script:Root, $script:MachinesDir, $script:SshDir; $t = (Get-PSDrive TestDrive).Root; $script:Root = $t; $script:MachinesDir = Join-Path $t 'machines'; $script:SshDir = Join-Path $t 'ssh' } }
     AfterEach { InModuleScope WsCreator { $script:Root, $script:MachinesDir, $script:SshDir = $script:Saved } }
 
-    It 'refuse un port SSH déjà pris par une autre machine' {
+    It 'rejects an SSH port already used by another machine' {
         New-TestRepo -Name 'one' -Port 2400
         New-TestRepo -Name 'two' -Port 2400
         InModuleScope WsCreator {
@@ -123,7 +123,7 @@ Describe 'Test-MachineConflict' {
 }
 
 Describe 'Get-SshHostConfig' {
-    It 'passe par wsl.exe et nc vers le port de la machine' {
+    It 'goes through wsl.exe and nc to the machine port' {
         InModuleScope WsCreator {
             $text = Get-SshHostConfig @{ Name = 'm'; User = 'dev'; Ssh = @{ Port = 2299; PublicKey = 'id_ed25519.pub' } }
             $text | Should -Match '(?m)^Host m$'
@@ -134,8 +134,8 @@ Describe 'Get-SshHostConfig' {
     }
 }
 
-Describe 'Structure du dépôt' {
-    It '<_> est du cloud-config sans moteur de modèles' -ForEach @(
+Describe 'Repo structure' {
+    It '<_> is cloud-config without a template engine' -ForEach @(
         Get-ChildItem -Path (Join-Path (Split-Path $PSScriptRoot -Parent) 'src\WsCreator\cloud-config'), (Join-Path (Split-Path $PSScriptRoot -Parent) 'examples') -Recurse -Filter *.yaml |
             ForEach-Object { [IO.Path]::GetRelativePath((Split-Path $PSScriptRoot -Parent), $_.FullName) }
     ) {
@@ -144,20 +144,20 @@ Describe 'Structure du dépôt' {
         $text | Should -Not -Match '\{%|\{\{'
     }
 
-    It 'les fichiers de files\ ont des fins de ligne Linux' {
+    It 'files in files\ have Linux line endings' {
         $crlf = Get-ChildItem -Path (Join-Path $repo 'src\WsCreator\files') -Recurse -File |
             Where-Object { (Get-Content -Path $_.FullName -Raw) -match "`r" }
         $crlf | Should -BeNullOrEmpty
     }
 
-    It 'files\ ne vise aucun dossier personnel' {
+    It 'files\ targets no home folder' {
         Get-ChildItem -Path (Join-Path $repo 'src\WsCreator\files') -Recurse -Directory |
             Where-Object { $_.FullName -match '\\(home|root)(\\|$)' } | Should -BeNullOrEmpty
     }
 
-    # apply -Only guard joue cloud-init sans le fragment base : ce qui doit valoir à chaque passage
-    # est dans la config système, copiée à chaque fois (une clé d'hôte régénérée casse ssh)
-    It 'la config système de cloud-init garde les clés SSH et le nom d''hôte' {
+    # apply -Only guard runs cloud-init without the base fragment: what must hold on every run
+    # is in the system config, copied every time (a regenerated host key breaks ssh)
+    It 'the cloud-init system config keeps the SSH keys and the hostname' {
         $cfg = Get-Content -Path (Join-Path $repo 'src\WsCreator\files\etc\cloud\cloud.cfg.d\99_zz-ws-creator.cfg') -Raw
         $cfg | Should -Match '(?m)^ssh_deletekeys: false'
         $cfg | Should -Match '(?m)^preserve_hostname: true'

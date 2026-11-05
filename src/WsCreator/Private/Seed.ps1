@@ -1,6 +1,6 @@
-# Copie une arborescence de fichiers texte dans la distro, chemin relatif = destination
-# (files\usr\local\bin\x -> /usr/local/bin/x). Le lien éventuel est remplacé, pas suivi.
-# PowerShell ajoute une fin de ligne à ce qu'il envoie : head -c -1 la retire.
+# Copies a tree of text files into the distro, relative path = destination
+# (files\usr\local\bin\x -> /usr/local/bin/x). An existing link is replaced, not followed.
+# PowerShell appends a newline to what it pipes: head -c -1 removes it.
 function Copy-FileTree($m, [string]$Source) {
     if (-not (Test-Path -Path $Source)) { return }
     foreach ($file in Get-ChildItem -Path $Source -Recurse -File) {
@@ -11,15 +11,15 @@ function Copy-FileTree($m, [string]$Source) {
     }
 }
 
-# Seed NoCloud, puis rejeu de cloud-init :
-#   1. files\ et machines\<nom>\files\ copiés tels quels, /etc/ws-creator-profile ;
-#   2. les fragments, puis user-data.yaml de la machine (en dernier : il complète), validés par
-#      cloud-init schema et assemblés par make-mime ; meta-data : l'instance-id seul ;
-#   3. clean, redémarrage, attente du résultat.
-# cloud-init ajoute et ne retire jamais : retirer un droit ou changer l'isolation passe par
-# purge puis new.
+# NoCloud seed, then a cloud-init rerun:
+#   1. files\ and machines\<name>\files\ copied as is, /etc/ws-creator-profile;
+#   2. the fragments, then the machine's user-data.yaml (last: it completes them), validated by
+#      cloud-init schema and assembled by make-mime; meta-data: only the instance-id;
+#   3. clean, restart, wait for the result.
+# cloud-init adds and never removes: removing a permission or changing isolation means
+# purge, then new.
 function Invoke-CloudInit($m, [string[]]$Fragments) {
-    $PSNativeCommandUseErrorActionPreference = $false   # codes de sortie lus plus bas
+    $PSNativeCommandUseErrorActionPreference = $false   # exit codes checked below
     $seed = '/var/lib/cloud/seed/nocloud'
     $parts = '/var/lib/ws-creator/cloud-config'
 
@@ -43,7 +43,7 @@ function Invoke-CloudInit($m, [string[]]$Fragments) {
     Invoke-Root $m "cloud-init devel make-mime $($mime -join ' ') > $seed/user-data"
     if ($LASTEXITCODE) { throw "cloud-init devel make-mime failed in $($m.Name)" }
 
-    # l'accueil d'Ubuntu (wsl-setup) pose ce marqueur au premier lancement interactif
+    # Ubuntu's first-run setup (wsl-setup) leaves this marker on the first interactive launch
     Invoke-Root $m 'rm -f /etc/cloud/cloud-init.disabled && cloud-init clean --logs'
     Stop-Distro $m
     $status = Invoke-Root $m 'cloud-init status --wait --format json' | ConvertFrom-Json

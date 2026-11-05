@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# core.hooksPath (config git système) pointe sur /etc/ws-creator/hooks, où chaque hook est un
-# lien vers ce script : il lance le contrôle ws-creator du même nom, s'il existe, puis le hook
-# du dépôt (.git/hooks/<nom>), que core.hooksPath masquerait sinon.
+# core.hooksPath (system git config) points to /etc/ws-creator/hooks, where each hook is a
+# link to this script: it runs the ws-creator check of the same name, if any, then the repo's
+# hook (.git/hooks/<name>), which core.hooksPath would hide otherwise.
 set -uo pipefail
 name=$(basename "$0")
 here=$(dirname "$(readlink -f "$0")")
 home=$(getent passwd "$(id -un)" | cut -d: -f6)
-export PATH="$home/.local/bin:$home/.local/share/mise/shims:$PATH"   # mise (hooks des dépôts), gitleaks, gh
+export PATH="$home/.local/bin:$home/.local/share/mise/shims:$PATH"   # mise (repo hooks), gitleaks, gh
 
-# entrée standard des hooks qui en ont une : lue une fois, rejouée pour chaque hook
+# stdin of the hooks that have one: read once, replayed for each hook
 stdin=$(mktemp)
 trap 'rm -f "$stdin"' EXIT
 case "$name" in pre-push | post-rewrite) cat > "$stdin" ;; esac

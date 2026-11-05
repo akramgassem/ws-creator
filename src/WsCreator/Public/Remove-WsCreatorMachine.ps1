@@ -1,9 +1,9 @@
 function Remove-WsCreatorMachine {
     <#
     .SYNOPSIS
-    Efface la distro (confirmation par le nom). Pas de purge partielle : cloud-init ne retire
-    rien, on purge puis on recrée (infrastructure immuable).
-    Refuse s'il reste du travail non poussé, sauf -Force.
+    Deletes the distro (confirmed by typing its name). No partial purge: cloud-init removes
+    nothing, so purge, then recreate (immutable infrastructure).
+    Refuses while unpushed work remains, unless -Force.
     #>
     param([Parameter(Mandatory)][string]$Name, [switch]$Apply, [switch]$Force)
     $script:Apply = $Apply.IsPresent
@@ -30,5 +30,5 @@ function Remove-WsCreatorMachine {
         if (Test-Path -Path $target) { Remove-Item -Recurse -Force -Path $target }
         Remove-SshHost $m
     }
-    if ($Apply) { Write-Host 'Si gh était connecté : révoquer son jeton sur GitHub (Settings > Applications), sauf jeton --expiring.' }
+    if ($Apply) { Write-Host 'If gh was logged in: revoke its token on GitHub (Settings > Applications), unless it was an --expiring token.' }
 }

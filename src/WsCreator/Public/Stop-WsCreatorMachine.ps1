@@ -1,7 +1,7 @@
 function Stop-WsCreatorMachine {
     <#
     .SYNOPSIS
-    Arrête proprement : conteneurs, puis distro (jamais wsl --terminate seul, voir README).
+    Stops cleanly: containers, then the distro (never wsl --terminate alone, see README).
     #>
     param([Parameter(Mandatory)][string]$Name, [switch]$Apply)
     $script:Apply = $Apply.IsPresent

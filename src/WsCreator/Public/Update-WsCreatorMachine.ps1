@@ -1,8 +1,8 @@
 function Update-WsCreatorMachine {
     <#
     .SYNOPSIS
-    Rejoue fragments et scripts sur une distro existante (-Only : certains seulement).
-    cloud-init ajoute et ne retire rien : pour retirer un droit, purge puis new.
+    Reapplies fragments and modules on an existing distro (-Only: just some of them).
+    cloud-init adds and removes nothing: to remove a permission, purge, then new.
     #>
     param([Parameter(Mandatory)][string]$Name, [string[]]$Only, [switch]$Apply)
     $script:Apply = $Apply.IsPresent

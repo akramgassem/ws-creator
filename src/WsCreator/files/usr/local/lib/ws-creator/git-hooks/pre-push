@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Refuse de pousser sur une branche dont la pull request GitHub est déjà fusionnée : les
-# commits n'arriveraient jamais sur la branche principale. Sans réseau ni gh, laisse passer.
-# $1 : remote, $2 : URL ; entrée standard : <ref locale> <sha> <ref distante> <sha>
+# Refuses to push to a branch whose GitHub pull request is already merged: the commits would
+# never reach the main branch. Without network or gh, lets it through.
+# $1: remote, $2: URL; stdin: <local ref> <sha> <remote ref> <sha>
 set -uo pipefail
 . "$(dirname "$(readlink -f "$0")")/common.sh"
 
@@ -12,18 +12,18 @@ status=0
 
 while read -r _ local_sha remote_ref _; do
     case "$remote_ref" in refs/heads/*) ;; *) continue ;; esac
-    [ "${local_sha//0/}" = "" ] && continue   # suppression de branche
+    [ "${local_sha//0/}" = "" ] && continue   # branch deletion
     branch=${remote_ref#refs/heads/}
     if ! prs=$(timeout 15 gh pr list --repo "$slug" --head "$branch" --state all \
         --json number,state --jq '.[] | "\(.state) #\(.number)"' 2>/dev/null < /dev/null); then
-        fail "état des PR de $branch inconnu (gh), poussé sans contrôle"
+        fail "PR state of $branch unknown (gh), pushed without the check"
         continue
     fi
     grep -q '^OPEN ' <<< "$prs" && continue
     merged=$(grep '^MERGED ' <<< "$prs" | cut -d' ' -f2 | paste -sd' ')
     if [ -n "$merged" ]; then
-        fail "la PR $merged de la branche $branch est déjà fusionnée : ces commits ne seraient pas sur la branche principale."
-        fail "Créer une nouvelle branche depuis la principale (git cherry-pick) et ouvrir une nouvelle PR."
+        fail "PR $merged of branch $branch is already merged: these commits would not reach the main branch."
+        fail "Create a new branch from main (git cherry-pick) and open a new PR."
         status=1
     fi
 done

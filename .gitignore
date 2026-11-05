@@ -1,7 +1,7 @@
 distros/
 images/
-# réglages guard (motifs du client) et noms interdits : privés
+# guard settings (client patterns) and forbidden names: private
 machines/*/files/etc/ws-creator/
 
-# machines locales (ou WS_CREATOR_MACHINES vers un dossier de config à part)
+# local machines (or WS_CREATOR_MACHINES pointing to a separate config folder)
 machines/

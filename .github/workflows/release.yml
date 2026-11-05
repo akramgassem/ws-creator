@@ -1,5 +1,5 @@
-# Publication sur la PowerShell Gallery quand on pousse un tag vX.Y.Z égal à ModuleVersion
-# (secret PSGALLERY_API_KEY : clé d'API du compte powershellgallery.com, portée WsCreator)
+# Publishes to the PowerShell Gallery when a tag vX.Y.Z equal to ModuleVersion is pushed
+# (secret PSGALLERY_API_KEY: API key of the powershellgallery.com account, scoped to WsCreator)
 name: release
 on:
   push:
@@ -11,7 +11,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Vérifier la version, puis publier
+      - name: Check the version, then publish
         shell: pwsh
         env:
           PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}

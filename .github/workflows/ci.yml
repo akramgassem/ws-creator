@@ -1,4 +1,4 @@
-# Tests et lint du module à chaque push et PR (runner Windows : le module exige Windows et pwsh)
+# Module tests and lint on every push and PR (Windows runner: the module requires Windows and pwsh)
 name: ci
 on:
   push:
@@ -11,7 +11,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Pester et PSScriptAnalyzer
+      - name: Pester and PSScriptAnalyzer
         shell: pwsh
         run: |
           Install-PSResource -Name Pester, PSScriptAnalyzer -TrustRepository -Quiet

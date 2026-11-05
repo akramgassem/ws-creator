@@ -1,7 +1,7 @@
-"""Noms interdits : sha256 de mots (et de paires de mots) en minuscules, une empreinte par
-ligne dans /etc/ws-creator/denylist.sha256, '#' pour commenter. Sont cherchés aussi les
-morceaux des mots composés (« nom-produit » est cherché aussi sous « nom » et « produit »).
-Texte sur l'entrée standard, code 1 si un nom est trouvé."""
+"""Forbidden names: sha256 of lowercase words (and word pairs), one hash per line in
+/etc/ws-creator/denylist.sha256, '#' for comments. Parts of compound words are checked too
+("product-name" is also checked as "product" and "name").
+Text on stdin, exit code 1 if a name is found."""
 import hashlib
 import re
 import sys
@@ -24,6 +24,6 @@ for i, w in enumerate(words):
             found.add(h[:10])
 
 if found:
-    print(f"ws-creator guard : nom interdit dans {sys.argv[1]} (hash {', '.join(sorted(found))}) ;"
-          " anonymiser, voir les règles de la machine", file=sys.stderr)
+    print(f"ws-creator guard: forbidden name in {sys.argv[1]} (hash {', '.join(sorted(found))});"
+          " anonymize it, see the machine's rules", file=sys.stderr)
     sys.exit(1)

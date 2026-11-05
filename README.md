@@ -1,50 +1,50 @@
 # ws-creator
 
-Lanceur d'environnements WSL : un dossier décrit une machine, ws-creator la construit
-(cloud-init, puis quelques scripts), la fait évoluer et l'efface.
+WSL environment launcher: a folder describes a machine, ws-creator builds it (cloud-init,
+then a few scripts), evolves it and deletes it.
 
-    ws-creator new    <machine> [-Apply]                 crée la distro (depuis l'image si elle existe) et joue tout
-    ws-creator apply  <machine> [-Only a,b] [-Apply]     rejoue fragments et scripts sur une distro existante
-    ws-creator purge  <machine> [-Apply] [-Force]        efface la distro (puis new pour la refaire)
-    ws-creator stop   <machine> [-Apply]                 arrête proprement (conteneurs puis distro)
-    ws-creator image  <machine> [-Apply]                 construit l'image <machine>.tar (base + mise)
-    ws-creator status <machine>                          distro, disque, cloud-init, conteneurs, gh
-    ws-creator code   <machine>                          ouvre VS Code sur ~/src de la machine
-    ws-creator doctor                                    WSL, réseau, Falcon, conflits, droits des clés
-    ws-creator list                                      machines et distros
+    ws-creator new    <machine> [-Apply]                 creates the distro (from the image if there is one) and applies everything
+    ws-creator apply  <machine> [-Only a,b] [-Apply]     reapplies fragments and modules on an existing distro
+    ws-creator purge  <machine> [-Apply] [-Force]        deletes the distro (then new to rebuild it)
+    ws-creator stop   <machine> [-Apply]                 stops cleanly (containers, then the distro)
+    ws-creator image  <machine> [-Apply]                 builds the image <machine>.tar (base + mise)
+    ws-creator status <machine>                          distro, disk, cloud-init, containers, gh
+    ws-creator code   <machine>                          opens VS Code on the machine's ~/src
+    ws-creator doctor                                    WSL, network, Falcon, conflicts, key permissions
+    ws-creator list                                      machines and distros
 
-Sans `-Apply` : aperçu, rien n'est exécuté. `purge` demande en plus de taper
-le nom de la machine, et refuse s'il reste du travail non poussé dans `~/src` ou `~/scratch`
-(modifications non commitées, commits non poussés, stash) sauf `-Force`. `new`, `apply`
-et `image` affichent leur durée.
+Without `-Apply`: dry run, nothing is executed. `purge` also asks you to type the machine's
+name, and refuses while unpushed work remains in `~/src` or `~/scratch` (uncommitted
+changes, unpushed commits, stash) unless `-Force`. `new`, `apply` and `image` print how
+long they took.
 
-Accès : `ssh <machine>` (alias écrit par ws-creator avec le fragment ssh), VS Code Remote-SSH ou l'app
-Claude avec ce même hôte. La distro démarre à la connexion.
+Access: `ssh <machine>` (alias written by ws-creator with the ssh fragment), VS Code
+Remote-SSH, or the Claude app with the same host. The distro starts on connection.
 
-![Architecture de ws-creator](docs/architecture.svg)
+![ws-creator architecture](docs/architecture.svg)
 
-## Installer
+## Install
 
-Prérequis : Windows 11, WSL 2 en mode réseau mirrored, PowerShell 7.4+.
+Requirements: Windows 11, WSL 2 in mirrored networking mode, PowerShell 7.4+.
 
 ```powershell
-Install-PSResource WsCreator        # PowerShell Gallery (ou : Install-Module WsCreator)
+Install-PSResource WsCreator        # PowerShell Gallery (or: Install-Module WsCreator)
 ws-creator doctor
 ```
 
-`ws-creator` est l'alias d'`Invoke-WsCreator` ; chaque sous-commande est aussi une fonction
-(`Get-Command -Module WsCreator`, `Get-Help New-WsCreatorMachine`). Mise à jour :
-`Update-PSResource WsCreator`. Depuis un clone, sans installer : `.\ws-creator.ps1 <commande>`.
+`ws-creator` is the alias of `Invoke-WsCreator`; each subcommand is also a function
+(`Get-Command -Module WsCreator`, `Get-Help New-WsCreatorMachine`). Update:
+`Update-PSResource WsCreator`. From a clone, without installing: `.\ws-creator.ps1 <command>`.
 
-## Démarrer
+## Get started
 
-Le module contient l'outil, pas vos machines : `examples/` en donne une à copier.
+The module holds the tool, not your machines: `examples/` has one to copy.
 
-| Quoi | Où, par défaut | Variable pour le changer |
+| What | Where, by default | Variable to change it |
 |---|---|---|
-| vos machines (config, à versionner dans un dépôt privé) | `%APPDATA%\ws-creator\machines` | `WS_CREATOR_MACHINES` |
-| images de base (reconstructibles) | `%LOCALAPPDATA%\ws-creator\images` | `WS_CREATOR_IMAGES` |
-| disques des distros | `Location` de chaque `machine.psd1` | — |
+| your machines (config, to keep in a private repo) | `%APPDATA%\ws-creator\machines` | `WS_CREATOR_MACHINES` |
+| base images (rebuildable) | `%LOCALAPPDATA%\ws-creator\images` | `WS_CREATOR_IMAGES` |
+| distro disks | `Location` in each `machine.psd1` | — |
 
 ```powershell
 $machines = "$env:APPDATA\ws-creator\machines"
@@ -52,231 +52,235 @@ New-Item -ItemType Directory -Force $machines | Out-Null
 Invoke-WebRequest https://github.com/akramgassem/ws-creator/archive/refs/heads/main.zip -OutFile $env:TEMP\wsc.zip
 Expand-Archive $env:TEMP\wsc.zip $env:TEMP\wsc -Force
 Copy-Item -Recurse $env:TEMP\wsc\ws-creator-main\examples\agent-sandbox $machines
-# dans la copie : la clé de ~\.ssh\id_ed25519.pub dans user-data.yaml, Location dans machine.psd1
-ws-creator new agent-sandbox            # aperçu
+# in the copy: the key from ~\.ssh\id_ed25519.pub in user-data.yaml, Location in machine.psd1
+ws-creator new agent-sandbox            # dry run
 ws-creator new agent-sandbox -Apply
 ```
 
-## Structure
+## Layout
 
-Trois choses, trois formats, aucun moteur de modèles. Le module se suffit : il livre ses
-fragments, fichiers et scripts avec lui (chemins ci-dessous relatifs à `src/WsCreator/`).
+Three things, three formats, no template engine. The module is self-contained: it ships its
+fragments, files and scripts (paths below are relative to `src/WsCreator/`).
 
-| Dossier | Contient | Format |
+| Folder | Holds | Format |
 |---|---|---|
-| `<WS_CREATOR_MACHINES>/<nom>/` | **qui** : une machine (le nom du dossier est celui de la distro), hors du module ; modèle dans `examples/` | `machine.psd1`, `user-data.yaml`, `files/` |
-| `cloud-config/` | **comment** : fragments communs, sans variable | cloud-config |
-| `files/` | **quoi** : fichiers copiés tels quels, chemin = destination (`files/usr/local/bin/x` -> `/usr/local/bin/x`) | fichiers texte |
-| `modules/` | ce que cloud-init n'exprime pas (agent) | bash |
-| `Public/`, `Private/` | l'outil : une commande = une fonction de `Public/`, les briques dans `Private/` | module PowerShell |
-| `tests/` (racine du dépôt) | tests du module | Pester |
+| `<WS_CREATOR_MACHINES>/<name>/` | **who**: a machine (the folder name is the distro name), outside the module; example in `examples/` | `machine.psd1`, `user-data.yaml`, `files/` |
+| `cloud-config/` | **how**: shared fragments, without variables | cloud-config |
+| `files/` | **what**: files copied as is, path = destination (`files/usr/local/bin/x` -> `/usr/local/bin/x`) | text files |
+| `modules/` | what cloud-init cannot express (agent) | bash |
+| `Public/`, `Private/` | the tool: one command = one function in `Public/`, building blocks in `Private/` | PowerShell module |
+| `tests/` (repo root) | module tests | Pester |
 
-## Une machine (`<WS_CREATOR_MACHINES>/<nom>/`)
+## A machine (`<WS_CREATOR_MACHINES>/<name>/`)
 
-- **`machine.psd1`** : le côté Windows seulement, et les valeurs qui doivent être uniques entre
-  machines (ws-creator les contrôle).
+- **`machine.psd1`**: the Windows side only, and the values that must be unique across
+  machines (ws-creator checks them).
 
-  | Clé | Obligatoire | Rôle |
+  | Key | Required | Role |
   |---|---|---|
-  | `BaseDistribution` | oui | image WSL (`wsl --list --online`) |
-  | `Location` | oui | dossier du disque virtuel (`<Location>\<nom>`) |
-  | `CloudConfig` | oui | fragments de `cloud-config/`, dans l'ordre (`user-data.yaml` vient en dernier) |
-  | `Modules` | non | scripts de `modules/`, joués après cloud-init, dans l'ordre |
-  | `PodmanSubnet` | si `podman` | sous-réseau /24 des conteneurs, **unique par machine** |
-  | `Ssh` | si `ssh` | `Port` (**unique par machine**), `PublicKey` (dans `~\.ssh`) : alias SSH Windows |
-  | `AgentInstructions` | non | fichier de ce dossier (ex. `AGENTS.md`) -> `~/.claude/CLAUDE.md` (module agent) |
+  | `BaseDistribution` | yes | WSL image (`wsl --list --online`) |
+  | `Location` | yes | folder of the virtual disk (`<Location>\<name>`) |
+  | `CloudConfig` | yes | fragments from `cloud-config/`, in order (`user-data.yaml` comes last) |
+  | `Modules` | no | scripts from `modules/`, run after cloud-init, in order |
+  | `PodmanSubnet` | with `podman` | /24 subnet for containers, **unique per machine** |
+  | `Ssh` | with `ssh` | `Port` (**unique per machine**), `PublicKey` (in `~\.ssh`): Windows SSH alias |
+  | `AgentInstructions` | no | file in this folder (e.g. `AGENTS.md`) -> `~/.claude/CLAUDE.md` (agent module) |
 
-- **`user-data.yaml`** : du cloud-config en clair, propre à la machine : `users` (et donc les
-  droits : groupe `sudo` et règle `sudo`, ou `sudo: null`), `/etc/wsl.conf` (hostname,
-  utilisateur par défaut, disque Windows, interop), paquets en plus, config mise
-  (`~/.config/mise/config.toml`, `defer: true`). ws-creator y lit l'utilisateur (`default=` de
-  `wsl.conf`) et vérifie qu'il est dans `users`, et que `hostname=` est le nom du dossier.
-  Avec les fragments `ssh` et `podman`, il porte aussi les valeurs uniques de la machine, que
-  ws-creator vérifie contre `machine.psd1` : `Port` et `AllowUsers` (`/etc/ssh/sshd_config.d/60-ws-creator-machine.conf`),
-  la clé de `Ssh.PublicKey` (`ssh_authorized_keys`, sans son commentaire), `default_subnet`
-  (`/etc/containers/containers.conf.d/60-ws-creator-machine.conf`), et le groupe `podman` de
-  l'utilisateur (accès au socket, donc droits root).
-- **`files/`** : fichiers système propres à la machine, ex. `etc/ws-creator/guard.conf` et
-  `etc/ws-creator/denylist.sha256` (ignorés par git). Jamais sous `/home` : le dossier serait créé
-  en root avant l'utilisateur ; ce qui va chez l'utilisateur passe par `user-data.yaml`.
-- Rien de personnel dans une machine : l'identité git et la config de l'utilisateur sont dans
-  ses dotfiles (ci-dessous).
+- **`user-data.yaml`**: plain cloud-config, specific to the machine: `users` (and so the
+  permissions: `sudo` group and `sudo` rule, or `sudo: null`), `/etc/wsl.conf` (hostname,
+  default user, Windows disk, interop), extra packages, mise config
+  (`~/.config/mise/config.toml`, `defer: true`). ws-creator reads the user from it
+  (`default=` in `wsl.conf`) and checks it is in `users`, and that `hostname=` is the folder
+  name. With the `ssh` and `podman` fragments, it also holds the machine's unique values,
+  which ws-creator checks against `machine.psd1`: `Port` and `AllowUsers`
+  (`/etc/ssh/sshd_config.d/60-ws-creator-machine.conf`), the `Ssh.PublicKey` key
+  (`ssh_authorized_keys`, without its comment), `default_subnet`
+  (`/etc/containers/containers.conf.d/60-ws-creator-machine.conf`), and the user's `podman`
+  group (socket access, so root rights).
+- **`files/`**: system files specific to the machine, e.g. `etc/ws-creator/guard.conf` and
+  `etc/ws-creator/denylist.sha256` (ignored by git). Never under `/home`: the folder would be
+  created as root before the user exists; what goes to the user goes through `user-data.yaml`.
+- Nothing personal in a machine: the git identity and the user's config live in their
+  dotfiles (below).
 
-## Config personnelle : dotfiles (chezmoi)
+## Personal config: dotfiles (chezmoi)
 
-L'identité git, la branche par défaut et `gh` comme fournisseur d'identifiants vivent dans un
-dépôt de dotfiles géré par [chezmoi](https://www.chezmoi.io/) : ils suivent l'utilisateur sur
-toutes ses machines (et dans Codespaces), ws-creator n'en sait rien. Sur une machine neuve :
+The git identity, the default branch and `gh` as credential helper live in a dotfiles repo
+managed by [chezmoi](https://www.chezmoi.io/): they follow the user to all their machines
+(and to Codespaces), ws-creator knows nothing about them. On a new machine:
 
     gh auth login
-    chezmoi init --apply <compte>    # demande une fois le nom et l'e-mail git
+    chezmoi init --apply <account>    # asks once for the git name and email
 
-chezmoi est un outil de la config mise de la machine. Le dépôt est privé : cloud-init ne peut pas
-le cloner au démarrage (aucun identifiant), d'où ces deux commandes, que `machine-state` rappelle
-tant qu'elles n'ont pas été lancées. Ce qui décrit la machine (son `AGENTS.md`, ses hooks) reste
-dans ws-creator.
+chezmoi is a tool in the machine's mise config. The repo is private: cloud-init cannot clone
+it at boot (no credentials), hence these two commands, which `machine-state` reminds you of
+until they have been run. What describes the machine (its `AGENTS.md`, its hooks) stays in
+ws-creator.
 
-## Fragments et modules
+## Fragments and modules
 
-| Nom | Forme | Fait |
+| Name | Kind | Does |
 |---|---|---|
-| `base` | cloud-config | paquets de base, journald, linger |
-| `mise` | cloud-config | mise et les outils de sa config, shims pour les shells non interactifs |
-| `guard` | cloud-config | hooks git de la machine (`/etc/ws-creator/hooks`), droits de `machine-state`, `machine-leftovers`, `machine-crumbs`, `machine-prune-branch` |
-| `podman` | cloud-config | podman en root, groupe système podman, socket ouvert au groupe, compatibilité Docker |
-| `ssh` | cloud-config | sshd sur `127.0.0.1` seulement, sans mot de passe ; ws-creator écrit l'alias SSH Windows |
-| `agent` | script | `~/.claude/CLAUDE.md`, skill `/menage`, hook `SessionStart` -> `machine-state`, règle `allow` de `machine-prune-branch`, `~/src`, `~/scratch` |
+| `base` | cloud-config | base packages, journald, linger |
+| `mise` | cloud-config | mise and the tools in its config, shims for non-interactive shells |
+| `guard` | cloud-config | the machine's git hooks (`/etc/ws-creator/hooks`), permissions of `machine-state`, `machine-leftovers`, `machine-crumbs`, `machine-prune-branch` |
+| `podman` | cloud-config | podman as root, podman system group, socket open to the group, Docker compatibility |
+| `ssh` | cloud-config | sshd on `127.0.0.1` only, no password; ws-creator writes the Windows SSH alias |
+| `agent` | script | `~/.claude/CLAUDE.md`, `/tidy` skill, `SessionStart` hook -> `machine-state`, `allow` rule for `machine-prune-branch`, `~/src`, `~/scratch` |
 
-L'utilisateur de la machine est l'uid 1000 : les fragments communs le trouvent par
-`getent passwd 1000`, sans le connaître.
+The machine's user is uid 1000: the shared fragments find it with `getent passwd 1000`,
+without knowing it.
 
-Services (bases, émulateurs) : la machine n'en démarre aucun. Chaque projet les déclare dans
-son `compose.yaml` et les lance lui-même (`docker compose up -d`, ou une tâche mise). En WSL
-mirrored, un port publié par podman (`ports:`) n'est pas joignable depuis la machine : le
-`compose.yaml` utilise `network_mode: host`, et le port se choisit dans la commande du service.
+Services (databases, emulators): the machine starts none. Each project declares them in its
+`compose.yaml` and starts them itself (`docker compose up -d`, or a mise task). With WSL
+mirrored, a port published by podman (`ports:`) cannot be reached from the machine: the
+`compose.yaml` uses `network_mode: host`, and the port is set in the service's command.
 
-## Provisionnement par cloud-init
+## Provisioning with cloud-init
 
-1. ws-creator copie `files/` puis `<WS_CREATOR_MACHINES>/<nom>/files/` dans la distro, et écrit `/etc/ws-creator-profile`.
-2. Il dépose les fragments de `CloudConfig`, puis `user-data.yaml`, dans
-   `/var/lib/ws-creator/cloud-config/`, les valide un par un (`cloud-init schema`), et les assemble
-   (`cloud-init devel make-mime`) en seed NoCloud ; `meta-data` ne contient que l'`instance-id`.
-   `merge_how: 'dict(recurse_array,no_replace)+list(append)'` additionne les listes
-   (`packages`, `write_files`, `runcmd`) d'un fragment à l'autre.
-3. `cloud-init clean --logs`, arrêt de la distro, `cloud-init status --wait`. Les lignes
-   `WARNING`/`ERROR` du journal s'affichent, et tout statut autre que `done` arrête ws-creator.
+1. ws-creator copies `files/`, then `<WS_CREATOR_MACHINES>/<name>/files/`, into the distro,
+   and writes `/etc/ws-creator-profile`.
+2. It puts the `CloudConfig` fragments, then `user-data.yaml`, in
+   `/var/lib/ws-creator/cloud-config/`, validates them one by one (`cloud-init schema`), and
+   assembles them (`cloud-init devel make-mime`) into a NoCloud seed; `meta-data` only holds
+   the `instance-id`. `merge_how: 'dict(recurse_array,no_replace)+list(append)'` adds up the
+   lists (`packages`, `write_files`, `runcmd`) from one fragment to the next.
+3. `cloud-init clean --logs`, distro stop, `cloud-init status --wait`. `WARNING`/`ERROR`
+   lines from the log are shown, and any status other than `done` stops ws-creator.
 
-- `files/etc/cloud/cloud.cfg.d/99_zz-ws-creator.cfg` limite les sources à NoCloud (pas de lecture de
-  `%USERPROFILE%\.cloud-init` par `/mnt/c`) ; le marqueur `cloud-init.disabled`, posé par
-  l'accueil d'Ubuntu, est retiré avant chaque passage.
-- **cloud-init ajoute, il ne retire jamais** : un rejeu (`apply`) ne reprend pas un droit, ne
-  retire ni paquet ni fichier. Pour cela : `purge` puis `new` (infrastructure immuable).
-  `runcmd` repasse à chaque rejeu : ses commandes vérifient avant d'agir.
+- `files/etc/cloud/cloud.cfg.d/99_zz-ws-creator.cfg` limits the sources to NoCloud (no
+  reading of `%USERPROFILE%\.cloud-init` through `/mnt/c`); the `cloud-init.disabled`
+  marker, left by Ubuntu's first-run setup, is removed before each run.
+- **cloud-init adds, it never removes**: a rerun (`apply`) does not take back a permission
+  and removes no package or file. For that: `purge`, then `new` (immutable infrastructure).
+  `runcmd` runs again on each rerun: its commands check before acting.
 
-## Garde-fous (fragment guard)
+## Guardrails (guard fragment)
 
-Ils vivent dans git et dans des commandes, pas dans un agent : ils valent pour un humain,
-Claude, Codex ou VS Code. Un agent n'a qu'un adaptateur mince (le hook `SessionStart` du
-module agent appelle `machine-state`).
+They live in git and in commands, not in an agent: they hold for a human, Claude, Codex or
+VS Code. An agent only has a thin adapter (the agent module's `SessionStart` hook calls
+`machine-state`).
 
-- `machine-state` (`files/usr/local/bin/`) : conteneurs, `gh`, branche et état local de chaque
-  dépôt de `~/src` et `~/scratch`, et le nombre de miettes (`machine-crumbs --local --summary`).
-- `machine-leftovers` (`files/usr/local/bin/`) : ce que la purge ferait perdre. Lignes `!`
-  (modifications, stash, commits sur aucune branche distante) : code 1, `purge` refuse. Lignes
-  `·` : `~/scratch` hors git, pour mémoire. `purge` et `status` lancent ce même script.
-- `machine-crumbs` : ce qui encombre sans être perdu, laissé par les sessions. Lignes `~`, code 0
-  (la purge ne les compte pas). Branches `[gone]`, worktrees disparus ou dans le scratchpad
-  (`/tmp/claude-<uid>/<projet>/<session>/`) d'une session terminée, serveurs en écoute dont le
-  dossier courant est supprimé, `~/scratch/<sujet>` dont le README se dit jetable et que rien n'a
-  modifié depuis `CRUMBS_SCRATCH_DAYS` jours (7, `guard.conf`), conteneurs dont le projet compose
-  a disparu. Sans `--local`, il ajoute les branches dont la PR est fusionnée (`gh`, une requête
-  par branche) et les serveurs lancés par la session appelante. Une session est vivante si le
-  processus de son `~/.claude/sessions/<pid>.json` tourne encore.
-- `machine-prune-branch <dépôt> <branche>` : supprime la branche, locale et sur origin, si et
-  seulement si sa PR est fusionnée, aucune n'est ouverte, et tous ses commits sont dans la PR
-  (fusion squash comprise) ; jamais la principale ni une branche extraite dans un worktree.
-  `--check` : le verdict seul. Le module agent l'autorise sans confirmation
-  (`permissions.allow`) : une règle explicite passe avant le classifieur du mode auto, qui
-  refuse `git branch -D` et `git push --delete`.
-- Skill `/menage` (`files/usr/local/share/ws-creator/claude/skills/`, posée par le module agent) : lance
-  `machine-crumbs`, ramasse ce qui est à la session ou à personne, demande avant un dossier de
-  scratch ou un conteneur, ne touche pas à ce qui est à une autre session active, et finit par
-  `machine-leftovers`. Pas de hook `Stop` : il se déclencherait à chaque tour.
-- Hooks (`files/usr/local/lib/ws-creator/git-hooks/`) : `core.hooksPath` système -> `/etc/ws-creator/hooks`,
-  chaque hook est un lien vers `dispatch`, qui lance le contrôle ws-creator puis `.git/hooks/<nom>` du
-  dépôt. Un `core.hooksPath` propre au dépôt (husky) remplace ceux de la machine.
-  Contournement : `git … --no-verify`.
-  - Hooks déclarés dans un dépôt : ils doivent aller dans `.git/hooks`, que `dispatch` appelle.
-    lefthook s'installe sinon dans le `core.hooksPath` de la machine : l'installer avec
+- `machine-state` (`files/usr/local/bin/`): containers, `gh`, branch and local state of each
+  repo in `~/src` and `~/scratch`, and the number of crumbs (`machine-crumbs --local --summary`).
+- `machine-leftovers` (`files/usr/local/bin/`): what a purge would lose. `!` lines
+  (changes, stash, commits on no remote branch): exit 1, `purge` refuses. `·` lines:
+  `~/scratch` outside git, for the record. `purge` and `status` run this same script.
+- `machine-crumbs`: what sessions left behind that clutters without being lost. `~` lines,
+  exit 0 (purge does not count them). `[gone]` branches, worktrees that are gone or in the
+  scratchpad (`/tmp/claude-<uid>/<project>/<session>/`) of an ended session, listening
+  servers whose current folder was deleted, `~/scratch/<topic>` whose README calls itself
+  throwaway and that nothing has changed for `CRUMBS_SCRATCH_DAYS` days (7, `guard.conf`),
+  containers whose compose project is gone. Without `--local`, it adds branches whose PR is
+  merged (`gh`, one request per branch) and servers started by the calling session. A session
+  is alive if the process of its `~/.claude/sessions/<pid>.json` is still running.
+- `machine-prune-branch <repo> <branch>`: deletes the branch, local and on origin, if and
+  only if its PR is merged, none is open, and all its commits are in the PR (squash merges
+  included); never the main branch or a branch checked out in a worktree. `--check`: the
+  verdict only. The agent module allows it without confirmation (`permissions.allow`): an
+  explicit rule wins over the auto mode classifier, which refuses `git branch -D` and
+  `git push --delete`.
+- `/tidy` skill (`files/usr/local/share/ws-creator/claude/skills/`, put in place by the agent
+  module): runs `machine-crumbs`, picks up what belongs to the session or to nobody, asks
+  before a scratch folder or a container, leaves alone what belongs to another active
+  session, and ends with `machine-leftovers`. No `Stop` hook: it would fire on every turn.
+- Hooks (`files/usr/local/lib/ws-creator/git-hooks/`): system `core.hooksPath` ->
+  `/etc/ws-creator/hooks`, each hook is a link to `dispatch`, which runs the ws-creator check,
+  then the repo's `.git/hooks/<name>`. A repo-level `core.hooksPath` (husky) replaces the
+  machine's hooks. Bypass: `git ... --no-verify`.
+  - Hooks declared in a repo: they must go in `.git/hooks`, which `dispatch` calls. Otherwise
+    lefthook installs itself in the machine's `core.hooksPath`: install it with
     `GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0="$(git rev-parse --path-format=absolute --git-common-dir)/hooks" lefthook install`,
-    et `no_auto_install: true` dans `lefthook.yml` (sans quoi il tente de remplacer les hooks
-    de la machine quand sa config change). pre-commit (le framework) refuse de s'installer
-    quand `core.hooksPath` est posé.
-  - `pre-commit` : `gitleaks` sur l'index, noms interdits dans les lignes ajoutées et les noms de fichiers.
-  - `commit-msg` : attribution à une IA (si `NO_AI_ATTRIBUTION=true`), noms interdits.
-  - `pre-push` : refuse une branche dont la PR GitHub est fusionnée (aucune PR ouverte). Sans `gh`
-    ou sans réseau, laisse passer.
-- Réglages : `<WS_CREATOR_MACHINES>/<nom>/files/etc/ws-creator/guard.conf` (`NO_AI_ATTRIBUTION`, `DENYLIST_EXCLUDE`,
-  motifs `owner/repo`) ; sans lui, attribution permise et pas d'exclusion.
-- Noms interdits : `<WS_CREATOR_MACHINES>/<nom>/files/etc/ws-creator/denylist.sha256` (privé),
-  empreintes sha256 de mots ou paires de mots en minuscules, une par ligne, `#` pour commenter
-  Empreinte d'un mot :
-  `-join ([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes('mot')) | % { $_.ToString('x2') })`.
-  Ne s'applique pas aux dépôts dont `origin` correspond à `DENYLIST_EXCLUDE` (ex. `owner/*`).
+    and `no_auto_install: true` in `lefthook.yml` (otherwise it tries to replace the
+    machine's hooks when its config changes). pre-commit (the framework) refuses to install
+    when `core.hooksPath` is set.
+  - `pre-commit`: `gitleaks` on the index, forbidden names in added lines and file names.
+  - `commit-msg`: AI attribution (if `NO_AI_ATTRIBUTION=true`), forbidden names.
+  - `pre-push`: refuses a branch whose GitHub PR is merged (no open PR). Without `gh` or
+    without network, lets it through.
+- Settings: `<WS_CREATOR_MACHINES>/<name>/files/etc/ws-creator/guard.conf`
+  (`NO_AI_ATTRIBUTION`, `DENYLIST_EXCLUDE`, `owner/repo` patterns); without it, attribution
+  is allowed and nothing is excluded.
+- Forbidden names: `<WS_CREATOR_MACHINES>/<name>/files/etc/ws-creator/denylist.sha256`
+  (private), sha256 hashes of lowercase words or word pairs, one per line, `#` for comments.
+  Hash of a word:
+  `-join ([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes('word')) | % { $_.ToString('x2') })`.
+  Does not apply to repos whose `origin` matches `DENYLIST_EXCLUDE` (e.g. `owner/*`).
 
-## Contrat des modules (scripts)
+## Module contract (scripts)
 
-- `modules/<m>.sh` s'exécute en root dans la distro, reçoit les valeurs de `machine.psd1` via
-  des variables `WS_CREATOR_*` (vérifiées en tête avec `: "${VAR:?}"`), dont `WS_CREATOR_USER`.
-- `modules/lib.sh` est préfixé à chaque module : `user_home`, `as_user`. Les numéros
-  de ligne d'une erreur bash incluent donc ceux de lib.sh.
-- Un module est rejouable : `apply` peut le relancer sans dégât. Ce que la machine fournit
-  (`AgentInstructions`, clé autorisée) est réécrit à chaque passage : `<WS_CREATOR_MACHINES>/<nom>/` fait foi.
-- Agir en tant qu'utilisateur : `sudo -u "$WS_CREATOR_USER" -H`, jamais `-i`
-  (`-i` passe par pam_systemd et provoque des erreurs systemd).
-- Pas de secret dans `WS_CREATOR_*` : les variables sont visibles dans `ps`. Les secrets
-  naissent dans la distro (`gh auth login`, `aws sso login`) et meurent avec elle.
-- `/etc/ws-creator-profile` marque une distro créée par ws-creator ; `purge` refuse sans lui.
+- `modules/<m>.sh` runs as root in the distro and receives the `machine.psd1` values as
+  `WS_CREATOR_*` variables (checked at the top with `: "${VAR:?}"`), including
+  `WS_CREATOR_USER`.
+- `modules/lib.sh` is prepended to each module: `user_home`, `as_user`. Line numbers in a
+  bash error therefore include those of lib.sh.
+- A module can be rerun: `apply` may run it again without damage. What the machine provides
+  (`AgentInstructions`, authorized key) is rewritten on every run:
+  `<WS_CREATOR_MACHINES>/<name>/` is the source of truth.
+- To act as the user: `sudo -u "$WS_CREATOR_USER" -H`, never `-i` (`-i` goes through
+  pam_systemd and causes systemd errors).
+- No secrets in `WS_CREATOR_*`: the variables are visible in `ps`. Secrets are born in the
+  distro (`gh auth login`, `aws sso login`) and die with it.
+- `/etc/ws-creator-profile` marks a distro created by ws-creator; `purge` refuses without it.
 
-## Développer ws-creator
+## Developing ws-creator
 
 ```powershell
 Invoke-Pester -Path tests                                                    # Pester 5+
 Invoke-ScriptAnalyzer -Path src -Recurse -Settings PSScriptAnalyzerSettings.psd1
 ```
 
-Les tests couvrent ce qui ne touche pas à WSL : lecture et validation des machines, sélection `-Only` d'`apply`,
-conflits, config SSH, et les règles de structure (pas de Jinja, fins de ligne Linux dans
-`files/`, rien sous `/home`), et la machine d'`examples/`. Le reste s'essaie sur une machine
-jetable (`<WS_CREATOR_MACHINES>/<essai>/`, puis `wsl --unregister`).
+The tests cover what does not touch WSL: reading and validating machines, `apply`'s `-Only`
+selection, conflicts, SSH config, the structure rules (no Jinja, Linux line endings in
+`files/`, nothing under `/home`), and the machine in `examples/`. The rest is tried on a
+throwaway machine (`<WS_CREATOR_MACHINES>/<test>/`, then `wsl --unregister`).
 
-## Règles d'usage
+## Usage rules
 
-- **Arrêter par `ws-creator stop`, jamais par `wsl --terminate`** : les distros
-  partagent la pile réseau de WSL, un conteneur tué laisse ses règles NAT actives.
-  Si c'est arrivé : `wsl --shutdown` (arrête toutes les distros).
-- **Ports et sous-réseaux uniques par machine** (`Ssh.Port`, `PodmanSubnet`, et les ports
-  des services des projets) : en WSL mirrored, Windows et toutes les distros les partagent.
-  Un port déjà pris côté Windows (ex. un Postgres local sur 5432) l'est aussi pour les machines. `new`/`apply` refusent un port SSH ou
-  un sous-réseau en double ; deux projets qui lancent un service sur le même port, sur deux
-  machines à la fois, entrent en conflit.
-- **Image de base** (`image`) : distro neuve + fragments `base` et `mise` (et `user-data.yaml`),
-  sans clé, jeton, sshd ni service. À reconstruire quand les paquets ou les outils changent
-  beaucoup (cloud-init rattrape les écarts, mais plus lentement).
-- **Après `purge`** : révoquer le jeton GitHub (Settings > Applications > GitHub CLI),
-  sauf s'il a été créé avec `gh auth login --expiring`.
-- **Le cloisonnement est celui de la machine, pas de l'app** : une session Claude
-  garde ses connecteurs Windows (Chrome, etc.) ; les désactiver pour un agent.
+- **Stop with `ws-creator stop`, never with `wsl --terminate`**: the distros share WSL's
+  network stack, and a killed container leaves its NAT rules active. If it happened:
+  `wsl --shutdown` (stops all distros).
+- **Ports and subnets unique per machine** (`Ssh.Port`, `PodmanSubnet`, and the ports of
+  the projects' services): with WSL mirrored, Windows and all distros share them. A port
+  already taken on the Windows side (e.g. a local Postgres on 5432) is taken for the
+  machines too. `new`/`apply` refuse a duplicate SSH port or subnet; two projects that
+  start a service on the same port, on two machines at once, conflict.
+- **Base image** (`image`): fresh distro + the `base` and `mise` fragments (and
+  `user-data.yaml`), without key, token, sshd or service. Rebuild it when packages or tools
+  change a lot (cloud-init catches up on the differences, but more slowly).
+- **After `purge`**: revoke the GitHub token (Settings > Applications > GitHub CLI), unless
+  it was created with `gh auth login --expiring`.
+- **Isolation is the machine's, not the app's**: a Claude session keeps its Windows
+  connectors (Chrome, etc.); turn them off for an agent.
 
-## Problèmes connus
+## Known issues
 
-- WSL 2.6.1 : `Failed to start the systemd user session for '<user>'` à chaque
-  connexion. Sous un EDR qui confine systemd (ci-dessous), la session utilisateur échoue
-  réellement ; sans conséquence pour ws-creator, qui n'en dépend pas.
-- Postes avec un EDR comme CrowdStrike Falcon (`ws-creator doctor` le détecte) : il peut
-  placer systemd sous `/sys/fs/cgroup/sensor.falcon` (700, aucun contrôleur délégué). D'où
-  les choix des fragments, qui marchent avec ou sans : pas de session systemd utilisateur
-  (pas de linger, diffusion journald coupée), podman en root (socket `/run/podman/podman.sock`,
-  groupe podman), `pids_limit = 0`, pas de `--memory`/`--cpus`. ws-creator ne touche pas à
-  la config de l'EDR.
-- WSL mirrored : la redirection iptables de podman vers `127.0.0.1` n'aboutit pas (un port
-  publié répond depuis Windows, pas depuis la distro) ; les services des projets passent par
+- WSL 2.6.1: `Failed to start the systemd user session for '<user>'` at every login. Under
+  an EDR that confines systemd (below), the user session really fails; no consequence for
+  ws-creator, which does not depend on it.
+- Workstations with an EDR such as CrowdStrike Falcon (`ws-creator doctor` detects it): it
+  may put systemd under `/sys/fs/cgroup/sensor.falcon` (700, no delegated controller). Hence
+  the fragments' choices, which work with or without it: no systemd user session (no linger,
+  journald broadcast turned off), podman as root (socket `/run/podman/podman.sock`, podman
+  group), `pids_limit = 0`, no `--memory`/`--cpus`. ws-creator does not touch the EDR's
+  config.
+- WSL mirrored: podman's iptables redirection to `127.0.0.1` does not work (a published
+  port answers from Windows, not from the distro); the projects' services use
   `network_mode: host`.
-- `CONTAINER_HOST` et `DOCKER_HOST` sont dans `/etc/environment` (lu par PAM : ssh,
-  VS Code ; pas par `wsl --exec`). `podman-docker` fournit `docker` et `/run/docker.sock`.
-- `wsl -- <cmd>` fait réinterpréter la commande par bash : utiliser `--exec` dès
-  qu'un argument contient | ' $ ou des espaces.
-- PowerShell ajoute une fin de ligne (`\r\n`) à tout ce qu'il envoie dans l'entrée standard
-  d'un programme : les modules passent par `tr -d '\r'`, la copie de `files/` retire aussi
-  l'octet final.
-- OpenSSH Windows exige des ACL privées : clé privée et `~\.ssh\ws-creator` accessibles
-  seulement par l'utilisateur et SYSTEM.
-- `ssh <machine> 'cmd'` sans `-t` : sortie en escalier dans la console Windows.
-- `~/.bashrc` d'Ubuntu s'arrête tôt pour les shells non interactifs (`ssh 'cmd'`) :
-  les shims mise sont ajoutés en tête, `mise activate` reste en fin de fichier.
-- Depuis un clone, `pwsh -File ws-creator.ps1 … -Only a,b` passe `a,b` comme une seule valeur :
-  lancer `.\ws-creator.ps1` depuis une session PowerShell, ou la commande `ws-creator` installée.
+- `CONTAINER_HOST` and `DOCKER_HOST` are in `/etc/environment` (read by PAM: ssh, VS Code;
+  not by `wsl --exec`). `podman-docker` provides `docker` and `/run/docker.sock`.
+- `wsl -- <cmd>` has bash reinterpret the command: use `--exec` as soon as an argument
+  contains | ' $ or spaces.
+- PowerShell appends a newline (`\r\n`) to everything it pipes to a program's stdin: the
+  modules go through `tr -d '\r'`, and the copy of `files/` also removes the final byte.
+- Windows OpenSSH requires private ACLs: the private key and `~\.ssh\ws-creator` must be
+  accessible only by the user and SYSTEM.
+- `ssh <machine> 'cmd'` without `-t`: staircase output in the Windows console.
+- Ubuntu's `~/.bashrc` stops early for non-interactive shells (`ssh 'cmd'`): the mise shims
+  are added at the top, `mise activate` stays at the end of the file.
+- From a clone, `pwsh -File ws-creator.ps1 ... -Only a,b` passes `a,b` as a single value:
+  run `.\ws-creator.ps1` from a PowerShell session, or the installed `ws-creator` command.
 
-## Licence
+## License
 
 [MIT](LICENSE)

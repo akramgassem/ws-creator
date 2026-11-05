@@ -1,28 +1,28 @@
 #cloud-config
-# Fragment podman : podman en root (Falcon empêche la session systemd de l'utilisateur, dont le
-# mode rootless a besoin) ; l'utilisateur le pilote par le socket de l'API, ouvert au groupe
-# podman. Ce que chaque machine décide est dans machines/<nom>/user-data.yaml : appartenance au
-# groupe podman (accès au socket = droits root) et sous-réseau (containers.conf.d/60-ws-creator-machine.conf).
+# podman fragment: podman as root (Falcon prevents the user's systemd session, which rootless
+# mode needs); the user drives it through the API socket, open to the podman group. What each
+# machine decides is in machines/<name>/user-data.yaml: membership of the podman group (socket
+# access = root rights) and subnet (containers.conf.d/60-ws-creator-machine.conf).
 merge_how: 'dict(recurse_array,no_replace)+list(append)'
 
-# groupe système, avant la création de l'utilisateur (bootcmd précède users_groups) : avec la clé
-# groups, cloud-init le créerait en gid 1000 et l'utilisateur prendrait le gid 1001
+# system group, before the user is created (bootcmd runs before users_groups): with the groups
+# key, cloud-init would create it as gid 1000 and the user would get gid 1001
 bootcmd:
   - [sh, -c, 'getent group podman >/dev/null || groupadd --system podman']
 
-# podman-docker : commande docker redirigée vers podman + lien /run/docker.sock
+# podman-docker: docker command redirected to podman + /run/docker.sock link
 packages: [podman, podman-docker]
 
 write_files:
-  # sans ce fichier, docker (podman-docker) affiche un avertissement à chaque appel
+  # without this file, docker (podman-docker) prints a warning on every call
   - path: /etc/containers/nodocker
     content: ""
-  # noms d'images courts
+  # short image names
   - path: /etc/containers/registries.conf.d/50-ws-creator.conf
     content: |
       unqualified-search-registries = ["docker.io"]
-  # Falcon ne délègue aucun contrôleur cgroup sous sensor.falcon : la limite de pids par défaut
-  # (2048) exige le contrôleur pids, on la retire. --memory/--cpus échoueront.
+  # Falcon delegates no cgroup controller under sensor.falcon: the default pids limit (2048)
+  # needs the pids controller, so it is removed. --memory/--cpus will fail.
   - path: /etc/containers/containers.conf.d/50-ws-creator.conf
     content: |
       [containers]
@@ -32,7 +32,7 @@ write_files:
       [Socket]
       SocketGroup=podman
       SocketMode=0660
-  # WSL fixe XDG_RUNTIME_DIR même quand la session utilisateur échoue (Falcon)
+  # WSL sets XDG_RUNTIME_DIR even when the user session fails (Falcon)
   - path: /etc/profile.d/ws-creator-podman.sh
     content: |
       [ -d "${XDG_RUNTIME_DIR:-}" ] || unset XDG_RUNTIME_DIR
@@ -40,7 +40,7 @@ write_files:
 runcmd:
   - |
     set -e
-    # le paquet crée /run/podman en 700 root (tmpfiles) : on l'ouvre aussi au groupe
+    # the package creates /run/podman as 700 root (tmpfiles): open it to the group as well
     sed 's|^D! /run/podman 0700 root root|D! /run/podman 0750 root podman|' \
         /usr/lib/tmpfiles.d/podman.conf > /etc/tmpfiles.d/podman.conf
     mkdir -p /run/podman
@@ -49,9 +49,9 @@ runcmd:
     systemctl daemon-reload
     systemctl enable podman.socket
     systemctl restart podman.socket
-    # la commande podman de l'utilisateur passe par ce socket, dans toute session :
-    # /etc/environment est lu par PAM (ssh, VS Code), même sans shell de connexion ; même socket
-    # pour les outils qui parlent « Docker » (compose, Testcontainers…)
+    # the user's podman command goes through this socket, in every session:
+    # /etc/environment is read by PAM (ssh, VS Code), even without a login shell; same socket
+    # for tools that speak "Docker" (compose, Testcontainers...)
     grep -q '^CONTAINER_HOST=' /etc/environment || echo 'CONTAINER_HOST=unix:///run/podman/podman.sock' >> /etc/environment
     grep -q '^DOCKER_HOST=' /etc/environment || echo 'DOCKER_HOST=unix:///run/podman/podman.sock' >> /etc/environment
-    systemd-tmpfiles --create /usr/lib/tmpfiles.d/podman-docker.conf   # /run/docker.sock tout de suite
+    systemd-tmpfiles --create /usr/lib/tmpfiles.d/podman-docker.conf   # /run/docker.sock right away

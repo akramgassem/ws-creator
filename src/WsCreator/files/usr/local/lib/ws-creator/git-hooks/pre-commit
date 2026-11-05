@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
-# Avant chaque commit : secrets (gitleaks) et noms interdits dans ce qui est indexé.
+# Before each commit: secrets (gitleaks) and forbidden names in what is staged.
 set -uo pipefail
 . "$(dirname "$(readlink -f "$0")")/common.sh"
 status=0
 
 if command -v gitleaks >/dev/null; then
     gitleaks git --pre-commit --staged --redact --no-banner --log-level warn . || {
-        fail "secret probable dans le contenu indexé (gitleaks ci-dessus)"
+        fail "likely secret in the staged content (gitleaks above)"
         status=1
     }
 else
-    fail "gitleaks absent (mise), secrets non vérifiés"
+    fail "gitleaks missing (mise), secrets not checked"
 fi
 
 if denylist_applies; then
     { git diff --cached --name-only --diff-filter=ACMR
-      git diff --cached --no-color -U0 --diff-filter=ACMR | grep '^+' | grep -v '^+++'
-    } | denylist_check "le contenu indexé" || status=1
+      git diff --cached --no-color -U0 --diff-filter=ACMR | sed -n '/^+++/d; /^+/p'   # sed: exit 0 even with no added line (an empty grep fails under pipefail)
+    } | denylist_check "the staged content" || status=1
 fi
 
 exit $status

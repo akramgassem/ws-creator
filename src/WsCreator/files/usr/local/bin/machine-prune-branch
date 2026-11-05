@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Supprime une branche, locale et distante (origin), seulement si sa PR GitHub est fusionnée.
-#   machine-prune-branch [--check] <dépôt> <branche>
-# Refuse : branche principale, branche extraite dans un worktree, PR ouverte ou absente,
-# commit local ou distant qui n'est pas dans la PR fusionnée (fusion squash comprise).
-# --check : verdict seul, rien n'est supprimé. Code 0 : supprimable (ou supprimée), 1 : gardée.
-# Utilisé par /menage et machine-crumbs. C'est la seule suppression de branche que les réglages
-# de Claude autorisent sans confirmation (module agent) : le contrôle vit ici. Les hooks restent
-# appelés (pas de --no-verify). Installé par le module guard.
+# Deletes a branch, local and remote (origin), only if its GitHub PR is merged.
+#   machine-prune-branch [--check] <repo> <branch>
+# Refuses: main branch, branch checked out in a worktree, PR open or missing, local or remote
+# commit that is not in the merged PR (squash merges included).
+# --check: verdict only, nothing is deleted. Exit 0: prunable (or pruned), 1: kept.
+# Used by /tidy and machine-crumbs. It is the only branch deletion Claude's settings allow
+# without confirmation (agent module): the check lives here. Hooks still run (no
+# --no-verify). Installed by the guard module.
 set -uo pipefail
 home=$(getent passwd "$(id -un)" | cut -d: -f6)
 export PATH="$home/.local/share/mise/shims:$PATH"
@@ -14,25 +14,25 @@ export PATH="$home/.local/share/mise/shims:$PATH"
 
 check=0
 [ "${1:-}" = --check ] && { check=1; shift; }
-[ $# -eq 2 ] || { echo "usage : machine-prune-branch [--check] <dépôt> <branche>" >&2; exit 2; }
+[ $# -eq 2 ] || { echo "usage: machine-prune-branch [--check] <repo> <branch>" >&2; exit 2; }
 repo=$1 branch=$2
-keep() { echo "gardée : $branch, $*"; exit 1; }
+keep() { echo "kept: $branch, $*"; exit 1; }
 
-git -C "$repo" rev-parse --git-dir >/dev/null 2>&1 || keep "$repo n'est pas un dépôt git"
+git -C "$repo" rev-parse --git-dir >/dev/null 2>&1 || keep "$repo is not a git repo"
 default=$(git -C "$repo" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null)
-case "$branch" in "${default#origin/}"|main|master) keep "branche principale" ;; esac
-git -C "$repo" worktree list --porcelain | grep -qxF "branch refs/heads/$branch" && keep "extraite dans un worktree"
+case "$branch" in "${default#origin/}"|main|master) keep "main branch" ;; esac
+git -C "$repo" worktree list --porcelain | grep -qxF "branch refs/heads/$branch" && keep "checked out in a worktree"
 
 slug=$(github_slug "$(git -C "$repo" remote get-url origin 2>/dev/null)")
-[ -n "$slug" ] || keep "origin n'est pas sur GitHub"
-command -v gh >/dev/null || keep "gh absent"
+[ -n "$slug" ] || keep "origin is not on GitHub"
+command -v gh >/dev/null || keep "gh missing"
 prs=$(timeout 15 gh pr list --repo "$slug" --head "$branch" --state all --json number,state,headRefOid \
-    --jq '.[] | "\(.state) \(.number) \(.headRefOid)"' 2>/dev/null < /dev/null) || keep "état des PR inconnu (gh)"
-grep -q '^OPEN ' <<< "$prs" && keep "PR ouverte"
+    --jq '.[] | "\(.state) \(.number) \(.headRefOid)"' 2>/dev/null < /dev/null) || keep "PR state unknown (gh)"
+grep -q '^OPEN ' <<< "$prs" && keep "PR open"
 merged=$(grep '^MERGED ' <<< "$prs")
-[ -n "$merged" ] || keep "aucune PR fusionnée"
+[ -n "$merged" ] || keep "no merged PR"
 
-# PR fusionnée qui contient le commit $1 (le dernier commit de la PR, ou un de ses ancêtres)
+# merged PR that contains commit $1 (the PR's last commit, or one of its ancestors)
 covering_pr() {
     local _ n head
     while read -r _ n head; do
@@ -46,19 +46,19 @@ covering_pr() {
 
 local_tip=$(git -C "$repo" rev-parse -q --verify "refs/heads/$branch")
 remote_tip=$(timeout 15 git -C "$repo" ls-remote --heads origin "refs/heads/$branch" 2>/dev/null < /dev/null) ||
-    keep "origin injoignable"
+    keep "origin unreachable"
 remote_tip=$(cut -f1 <<< "$remote_tip")
-[ -n "$local_tip$remote_tip" ] || keep "ni locale ni sur origin"
+[ -n "$local_tip$remote_tip" ] || keep "neither local nor on origin"
 pr=""
-if [ -n "$local_tip" ]; then pr=$(covering_pr "$local_tip") || keep "commits locaux absents des PR fusionnées"; fi
-if [ -n "$remote_tip" ]; then pr=$(covering_pr "$remote_tip") || keep "commits sur origin absents des PR fusionnées"; fi
-where=$(echo "${local_tip:+locale}${local_tip:+${remote_tip:+, }}${remote_tip:+origin}")
+if [ -n "$local_tip" ]; then pr=$(covering_pr "$local_tip") || keep "local commits not in the merged PRs"; fi
+if [ -n "$remote_tip" ]; then pr=$(covering_pr "$remote_tip") || keep "commits on origin not in the merged PRs"; fi
+where=$(echo "${local_tip:+local}${local_tip:+${remote_tip:+, }}${remote_tip:+origin}")
 
-if [ $check = 1 ]; then echo "supprimable : $branch, PR $pr fusionnée ($where)"; exit 0; fi
+if [ $check = 1 ]; then echo "prunable: $branch, PR $pr merged ($where)"; exit 0; fi
 if [ -n "$remote_tip" ]; then
-    git -C "$repo" push --quiet origin --delete "$branch" < /dev/null || keep "suppression sur origin refusée"
+    git -C "$repo" push --quiet origin --delete "$branch" < /dev/null || keep "deletion on origin refused"
 fi
 if [ -n "$local_tip" ]; then
-    git -C "$repo" branch --quiet -D "$branch" || keep "suppression locale refusée"
+    git -C "$repo" branch --quiet -D "$branch" || keep "local deletion refused"
 fi
-echo "supprimée : $branch, PR $pr fusionnée ($where)"
+echo "pruned: $branch, PR $pr merged ($where)"

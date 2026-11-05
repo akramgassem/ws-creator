@@ -1,8 +1,8 @@
-# Préfixé à chaque module (et purge) par ws-creator : fonctions communes.
+# Prepended by ws-creator to every module (and purge): shared functions.
 set -euo pipefail
 
-# dossier personnel de l'utilisateur de la machine (vide tant qu'il n'existe pas)
+# home folder of the machine's user (empty until it exists)
 user_home() { getent passwd "$WS_CREATOR_USER" | cut -d: -f6; }
 
-# commande en tant que l'utilisateur de la machine : -H, jamais -i (voir README)
+# command as the machine's user: -H, never -i (see README)
 as_user() { sudo -u "$WS_CREATOR_USER" -H "$@"; }

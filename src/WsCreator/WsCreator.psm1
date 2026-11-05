@@ -1,19 +1,19 @@
-# Module ws-creator : machines WSL décrites par <WS_CREATOR_MACHINES>\<nom>\. Une commande = une
-# fonction de Public\ ; Private\ contient les briques (WSL, seed cloud-init, scripts, SSH côté Windows).
-# Le module se suffit : cloud-config\, files\ et modules\ sont livrés avec lui (PowerShell Gallery).
+# ws-creator module: WSL machines described by <WS_CREATOR_MACHINES>\<name>\. One command = one
+# function in Public\; Private\ holds the building blocks (WSL, cloud-init seed, modules, Windows-side SSH).
+# The module is self-contained: cloud-config\, files\ and modules\ ship with it (PowerShell Gallery).
 
-# Les préférences de l'appelant ne s'appliquent pas aux fonctions d'un module : on les pose ici.
+# The caller's preferences do not apply to module functions: they are set here.
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $true
 $env:WSL_UTF8 = '1'
 
 $script:Root = $PSScriptRoot   # cloud-config\, files\, modules\
-# ce qui est à l'utilisateur vit hors du module, aux emplacements Windows usuels :
-# la config dans %APPDATA% (machines décrites), le reconstructible dans %LOCALAPPDATA% (images)
+# what belongs to the user lives outside the module, in the usual Windows locations:
+# config in %APPDATA% (described machines), rebuildable data in %LOCALAPPDATA% (images)
 $script:MachinesDir = if ($env:WS_CREATOR_MACHINES) { $env:WS_CREATOR_MACHINES } else { Join-Path -Path $env:APPDATA -ChildPath 'ws-creator\machines' }
 $script:ImagesDir = if ($env:WS_CREATOR_IMAGES) { $env:WS_CREATOR_IMAGES } else { Join-Path -Path $env:LOCALAPPDATA -ChildPath 'ws-creator\images' }
 $script:SshDir = Join-Path -Path $HOME -ChildPath '.ssh'
-$script:Apply = $false   # posé par chaque commande : sans -Apply, aperçu seulement
+$script:Apply = $false   # set by each command: without -Apply, dry run only
 
 foreach ($dir in 'Private', 'Public') {
     foreach ($file in Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath $dir) -Filter *.ps1) {

@@ -1,8 +1,8 @@
 function Build-WsCreatorImage {
     <#
     .SYNOPSIS
-    Image de base : distro neuve + fragments base et mise (et user-data.yaml), exportée en
-    <WS_CREATOR_IMAGES>\<nom>.tar ; new l'importe ensuite. Ni clé, ni jeton, ni sshd, ni service.
+    Base image: fresh distro + the base and mise fragments (and user-data.yaml), exported to
+    <WS_CREATOR_IMAGES>\<name>.tar; new imports it afterwards. No key, token, sshd or service.
     #>
     param([Parameter(Mandatory)][string]$Name, [switch]$Apply)
     $script:Apply = $Apply.IsPresent
