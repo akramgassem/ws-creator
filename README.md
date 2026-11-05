@@ -50,6 +50,7 @@ each command.
 - [Commands](https://akramgassem.github.io/ws-creator/reference/commands/)
 - [Architecture](https://akramgassem.github.io/ws-creator/explanation/architecture/)
 - [Contributing](https://akramgassem.github.io/ws-creator/contributing/)
+- [Changelog](CHANGELOG.md)
 
 ## License
 

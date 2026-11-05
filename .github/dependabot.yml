@@ -1,0 +1,22 @@
+# Weekly update PRs for the workflows' actions and the documentation site's npm packages.
+# cooldown: only versions released at least 14 days ago.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+    groups:
+      actions:
+        patterns: ['*']
+  - package-ecosystem: npm
+    directory: /docs
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+    groups:
+      docs:
+        patterns: ['*']
