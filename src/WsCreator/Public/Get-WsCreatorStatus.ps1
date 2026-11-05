@@ -2,6 +2,12 @@ function Get-WsCreatorStatus {
     <#
     .SYNOPSIS
     Distro, disk, image, cloud-init, sshd, containers, gh, unpushed work.
+    .PARAMETER Name
+    The machine: folder <WS_CREATOR_MACHINES>\<Name>\, and the distro of the same name.
+    .EXAMPLE
+    ws-creator status my-machine
+    .LINK
+    https://github.com/akramgassem/ws-creator
     #>
     param([Parameter(Mandatory)][string]$Name)
     $m = Get-Machine $Name

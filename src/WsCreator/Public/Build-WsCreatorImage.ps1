@@ -3,6 +3,14 @@ function Build-WsCreatorImage {
     .SYNOPSIS
     Base image: fresh distro + the base and mise fragments (and user-data.yaml), exported to
     <WS_CREATOR_IMAGES>\<name>.tar; new imports it afterwards. No key, token, sshd or service.
+    .PARAMETER Name
+    The machine: folder <WS_CREATOR_MACHINES>\<Name>\, and the distro of the same name.
+    .PARAMETER Apply
+    Do it. Without it, only shows the steps (dry run).
+    .EXAMPLE
+    ws-creator image my-machine -Apply
+    .LINK
+    https://github.com/akramgassem/ws-creator
     #>
     param([Parameter(Mandatory)][string]$Name, [switch]$Apply)
     $script:Apply = $Apply.IsPresent

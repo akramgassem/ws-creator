@@ -2,6 +2,12 @@ function Open-WsCreatorCode {
     <#
     .SYNOPSIS
     Opens VS Code (Remote-SSH) on the machine's ~/src.
+    .PARAMETER Name
+    The machine: folder <WS_CREATOR_MACHINES>\<Name>\, and the distro of the same name.
+    .EXAMPLE
+    ws-creator code my-machine
+    .LINK
+    https://github.com/akramgassem/ws-creator
     #>
     param([Parameter(Mandatory)][string]$Name)
     $m = Get-Machine $Name

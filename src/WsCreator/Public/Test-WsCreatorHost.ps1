@@ -3,6 +3,10 @@ function Test-WsCreatorHost {
     .SYNOPSIS
     Workstation check: WSL, network, Falcon, ssh, and for each machine: description, distro,
     conflicts, private key permissions.
+    .EXAMPLE
+    ws-creator doctor
+    .LINK
+    https://github.com/akramgassem/ws-creator
     #>
     function Show([string]$Mark, [string]$Text) { Write-Host "$Mark $Text" }
 

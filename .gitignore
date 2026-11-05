@@ -5,3 +5,4 @@ machines/*/files/etc/ws-creator/
 
 # local machines (or WS_CREATOR_MACHINES pointing to a separate config folder)
 machines/
+__pycache__/

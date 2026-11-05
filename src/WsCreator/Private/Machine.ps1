@@ -20,9 +20,10 @@ function Get-UserDataValue([string]$Text) {
     return $values
 }
 
-function Get-Machine([string]$Name) {
+# -Dir: a machine outside WS_CREATOR_MACHINES (a template, or the copy init is preparing)
+function Get-Machine([string]$Name, [string]$Dir) {
     if (-not $Name) { throw 'Machine name missing (machines\<name>\)' }
-    $dir = Get-MachineDir $Name
+    $dir = if ($Dir) { $Dir } else { Get-MachineDir $Name }
     $psd1 = Join-Path -Path $dir -ChildPath 'machine.psd1'
     $userData = Join-Path -Path $dir -ChildPath 'user-data.yaml'
     foreach ($file in $psd1, $userData) {
