@@ -6,3 +6,9 @@ machines/*/files/etc/ws-creator/
 # local machines (or WS_CREATOR_MACHINES pointing to a separate config folder)
 machines/
 __pycache__/
+
+# documentation site (docs/): dependencies, build output, generated command reference
+docs/node_modules/
+docs/dist/
+docs/.astro/
+docs/src/content/docs/reference/commands/

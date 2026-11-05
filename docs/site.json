@@ -1,0 +1,13 @@
+{
+  "title": "ws-creator",
+  "description": "Workspace creator for developers on Windows, with WSL.",
+  "customCss": ["./src/styles/theme.css"],
+  "sidebar": [
+    "getting-started",
+    { "label": "Guides", "items": [{ "autogenerate": { "directory": "guides" } }] },
+    { "label": "Commands", "items": [{ "autogenerate": { "directory": "reference/commands" } }] },
+    { "label": "Reference", "items": ["reference/machine", "reference/fragments", "reference/configuration"] },
+    { "label": "Explanation", "items": [{ "autogenerate": { "directory": "explanation" } }] },
+    "contributing"
+  ]
+}

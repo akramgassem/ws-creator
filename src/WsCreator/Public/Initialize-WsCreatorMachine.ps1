@@ -31,7 +31,7 @@ function Initialize-WsCreatorMachine {
     .EXAMPLE
     ws-creator init agent-sandbox sandbox -Port 2250 -Apply
     .LINK
-    https://github.com/akramgassem/ws-creator/blob/main/docs/design/catalogue.md
+    https://akramgassem.github.io/ws-creator/guides/templates/
     #>
     param(
         [Parameter(Mandatory)][string]$Template,

@@ -1,4 +1,9 @@
-# Design: template catalog and `ws-creator init`
+---
+title: Catalog design
+description: Design record of the template catalog and ws-creator init (accepted, 0.2.0).
+sidebar:
+  order: 4
+---
 
 Status: accepted, implemented in 0.2.0
 

@@ -1,4 +1,4 @@
-# Template catalogs (docs/design/catalogue.md). A template is a valid machine with a Description
+# Template catalogs (docs/src/content/docs/explanation/catalog-design.md). A template is a valid machine with a Description
 # key; a catalog is a folder of templates. WS_CREATOR_TEMPLATES lists catalogs separated by ';':
 # local paths or git repos (optionally #<branch|tag>), then the module's own templates\ comes last.
 
