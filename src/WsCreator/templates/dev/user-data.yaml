@@ -1,0 +1,68 @@
+#cloud-config
+# dev: a work machine. Administrator (sudo), containers through the podman socket, no access
+# to the Windows disk. Windows side (image, location, SSH port, subnet): machine.psd1.
+# ws-creator init rewrites the user, hostname, SSH port and key, and subnet below.
+merge_how: 'dict(recurse_array,no_replace)+list(append)'
+
+packages: [build-essential, unzip]
+
+users:
+  - name: wsuser
+    shell: /bin/bash
+    groups: [sudo, podman]   # podman: access to the API socket (= root rights)
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    # Windows public key (machine.psd1: Ssh.PublicKey, ws-creator checks they match)
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIReplaceWithTheContentOfYourOwnPublicKey00
+
+write_files:
+  # sshd (ssh fragment): port unique per machine (machine.psd1: Ssh.Port), only allowed user
+  - path: /etc/ssh/sshd_config.d/60-ws-creator-machine.conf
+    content: |
+      Port 2222
+      AllowUsers wsuser
+  # podman (podman fragment): subnet unique per machine (machine.psd1: PodmanSubnet)
+  - path: /etc/containers/containers.conf.d/60-ws-creator-machine.conf
+    content: |
+      [network]
+      default_subnet = "10.89.22.0/24"
+  # read by WSL at the distro's next launch (ws-creator stops it after cloud-init)
+  - path: /etc/wsl.conf
+    content: |
+      [boot]
+      systemd=true
+      command=mount --make-rshared /
+      [network]
+      hostname=dev
+      [user]
+      default=wsuser
+      [automount]
+      enabled=false
+      [interop]
+      enabled=false
+      appendWindowsPath=false
+  # defer (here and below): written after the user is created, otherwise write_files creates
+  # the home folder as root and useradd no longer copies /etc/skel
+  - path: /home/wsuser/.sudo_as_admin_successful
+    owner: wsuser:wsuser
+    defer: true
+    content: ""
+  # the machine's tools (mise fragment)
+  - path: /home/wsuser/.config/mise/config.toml
+    owner: wsuser:wsuser
+    defer: true
+    content: |
+      # The machine's tools. Versions specific to a project go in ITS mise.toml.
+      [tools]
+      node = "lts"
+      python = "3.12"
+      uv = "latest"
+      gh = "latest"
+      chezmoi = "latest"              # dotfiles: gh auth login, then chezmoi init --apply <account>
+      jq = "latest"
+      docker-compose = "latest"       # talks to the podman socket through DOCKER_HOST (podman fragment)
+      ripgrep = "latest"              # rg
+      fd = "latest"
+      yq = "latest"
+      gitleaks = "latest"             # secrets; used by the pre-commit hook (guard fragment)
+      lefthook = "latest"             # git hooks declared in a repo (lefthook.yml)

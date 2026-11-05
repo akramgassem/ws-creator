@@ -42,23 +42,23 @@ Describe 'Get-UserDataValue' {
 }
 
 Describe 'Get-Machine' {
-    It 'describes agent-sandbox from examples\agent-sandbox' {
-        # the example's public key, put in a test ~\.ssh
+    It 'template <_> is a valid machine with a one-line Description' -ForEach @('dev', 'agent-sandbox') {
+        # the templates' placeholder public key, put in a test ~\.ssh
+        $dir = Join-Path $repo "src\WsCreator\templates\$_"
         New-Item -ItemType Directory -Force -Path 'TestDrive:\ssh' | Out-Null
-        (Get-Content (Join-Path $repo 'examples\agent-sandbox\user-data.yaml')) -match '^\s*- ssh-ed25519 ' |
+        (Get-Content (Join-Path $dir 'user-data.yaml')) -match '^\s*- ssh-ed25519 ' |
             ForEach-Object { $_.Trim().TrimStart('- ') } | Set-Content 'TestDrive:\ssh\id_ed25519.pub'
-        InModuleScope WsCreator -Parameters @{ Repo = $repo } {
-            param($Repo)
-            $saved = $script:MachinesDir, $script:SshDir
-            $script:MachinesDir = Join-Path $Repo 'examples'
+        (Get-Content (Join-Path $dir 'machine.psd1')) -match '^\s*Description\s*=\s*''[^'']+''\s*$' | Should -HaveCount 1
+        InModuleScope WsCreator -Parameters @{ Dir = $dir; Name = $_ } {
+            param($Dir, $Name)
+            $saved = $script:SshDir
             $script:SshDir = Join-Path (Get-PSDrive TestDrive).Root 'ssh'
             try {
-                $m = Get-Machine 'agent-sandbox'
-                $m.Name | Should -Be 'agent-sandbox'
-                $m.User | Should -Be 'dev'
+                $m = Get-Machine $Name -Dir $Dir
+                $m.User | Should -Be 'wsuser'
                 $m.CloudConfig | Should -Be @('base', 'mise', 'guard', 'podman', 'ssh')
                 $m.Modules | Should -Be @('agent')
-            } finally { $script:MachinesDir, $script:SshDir = $saved }
+            } finally { $script:SshDir = $saved }
         }
     }
 
@@ -92,6 +92,131 @@ Describe 'Get-Machine' {
             Add-Content -Path 'TestDrive:\machines\box\user-data.yaml' -Value "      Port 2401`n      AllowUsers dev"
             InModuleScope WsCreator { { Get-Machine 'box' } | Should -Throw "*'Port 2400'*" }
         }
+    }
+}
+
+Describe 'Template catalogs' {
+    BeforeEach {
+        $env:WS_CREATOR_TEMPLATES = $null
+        InModuleScope WsCreator { $script:Saved = $script:CatalogsDir; $script:CatalogsDir = Join-Path (Get-PSDrive TestDrive).Root 'catalogs' }
+    }
+    AfterEach {
+        $env:WS_CREATOR_TEMPLATES = $null
+        InModuleScope WsCreator { $script:CatalogsDir = $script:Saved }
+    }
+
+    It 'reads local paths and git repos from WS_CREATOR_TEMPLATES, the module last' {
+        $env:WS_CREATOR_TEMPLATES = 'D:\templates; https://github.com/acme/ws-templates.git#v2'
+        InModuleScope WsCreator {
+            $s = @(Get-TemplateSource)
+            $s.Kind | Should -Be @('local', 'git', 'module')
+            $s[0].Dir | Should -Be 'D:\templates'
+            $s[1].Display | Should -Be 'github.com/acme/ws-templates'
+            $s[1].Ref | Should -Be 'v2'
+            $s[1].Dir | Should -BeLike '*\catalogs\github.com\acme\ws-templates'
+            $s[2].Dir | Should -BeLike '*\templates'
+        }
+    }
+
+    It 'shadows a module template with a personal one of the same name' {
+        New-Item -ItemType Directory -Force -Path 'TestDrive:\perso\dev' | Out-Null
+        Set-Content -Path 'TestDrive:\perso\dev\machine.psd1' -Value "@{ Description = 'Mine' }"
+        $env:WS_CREATOR_TEMPLATES = (Get-PSDrive TestDrive).Root + '\perso'
+        InModuleScope WsCreator {
+            $t = @(Get-Template | Where-Object Name -EQ 'dev')
+            $t | Should -HaveCount 2
+            $t[0].Description | Should -Be 'Mine'
+            $t[0].Shadowed | Should -BeFalse
+            $t[1].Shadowed | Should -BeTrue
+            $t[1].Version | Should -Be (Get-ModuleVersion)
+        }
+    }
+}
+
+Describe 'init' {
+    BeforeEach {
+        $env:WS_CREATOR_TEMPLATES = $null
+        $env:WS_CREATOR_LOCATION = $null
+        New-Item -ItemType Directory -Force -Path 'TestDrive:\ssh', 'TestDrive:\machines' | Out-Null
+        Set-Content -Path 'TestDrive:\ssh\id_ed25519.pub' -Value 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMineMineMineMineMineMineMineMineMineMine me@pc'
+        InModuleScope WsCreator {
+            $script:Saved = $script:MachinesDir, $script:SshDir
+            $t = (Get-PSDrive TestDrive).Root
+            $script:MachinesDir = Join-Path $t 'machines'
+            $script:SshDir = Join-Path $t 'ssh'
+        }
+        Mock -ModuleName WsCreator Test-Distro { $false }
+        Mock -ModuleName WsCreator Test-WindowsPort { $Port -eq 2222 }
+        Mock -ModuleName WsCreator Write-Host { }
+    }
+    AfterEach {
+        InModuleScope WsCreator { $script:MachinesDir, $script:SshDir = $script:Saved }
+        Remove-Item -Recurse -Force -Path 'TestDrive:\machines', 'TestDrive:\ssh' -ErrorAction SilentlyContinue
+    }
+
+    It 'turns a Windows user name into a Linux one' {
+        InModuleScope WsCreator {
+            ConvertTo-LinuxUser 'Akram.Gassem' | Should -Be 'akramgassem'
+            ConvertTo-LinuxUser '2be' | Should -Be 'u2be'
+        }
+    }
+
+    It 'writes nothing without -Apply' {
+        Initialize-WsCreatorMachine -Template dev -Name box -User alice
+        Test-Path 'TestDrive:\machines\box' | Should -BeFalse
+    }
+
+    It 'copies a template with the identity rewritten, a free port and subnet, and the provenance' {
+        Initialize-WsCreatorMachine -Template dev -Name box -User alice -Apply
+        $text = Get-Content 'TestDrive:\machines\box\user-data.yaml' -Raw
+        $text | Should -Match '(?m)^\s*- name: alice$'
+        $text | Should -Match '(?m)^\s*hostname=box$'
+        $text | Should -Match '(?m)^\s*Port 2223$'   # 2222 is taken on Windows (mock)
+        $text | Should -Match 'default_subnet = "10.89.1.0/24"'
+        $text | Should -Match 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMine'
+        $text | Should -Match '/home/alice/.config/mise/config.toml'
+        $text | Should -Not -Match 'wsuser'
+        $psd1 = Import-PowerShellDataFile 'TestDrive:\machines\box\machine.psd1'
+        $psd1.Ssh.Port | Should -Be 2223
+        $psd1.Location | Should -Be 'C:\WSL'
+        $psd1.Template | Should -Be 'dev'
+        $psd1.TemplateHash | Should -Match '^sha256:[0-9a-f]{64}$'
+        $psd1.ContainsKey('Description') | Should -BeFalse
+        InModuleScope WsCreator {
+            (Get-Machine 'box').User | Should -Be 'alice'
+            Get-MachineProvenance (Get-MachineDir 'box') | Should -BeLike 'copied from *templates\dev @ *'
+            Get-MachineProvenance (Get-MachineDir 'box') | Should -Not -BeLike '*modified since'
+        }
+    }
+
+    It 'takes the next port and subnet after the existing machines' {
+        Initialize-WsCreatorMachine -Template dev -Name one -User alice -Apply
+        Initialize-WsCreatorMachine -Template agent-sandbox -Name two -User alice -Apply
+        $psd1 = Import-PowerShellDataFile 'TestDrive:\machines\two\machine.psd1'
+        $psd1.Ssh.Port | Should -Be 2224
+        $psd1.PodmanSubnet | Should -Be '10.89.2.0/24'
+    }
+
+    It 'refuses an existing machine' {
+        Initialize-WsCreatorMachine -Template dev -Name box -User alice -Apply
+        { Initialize-WsCreatorMachine -Template dev -Name box -User alice } | Should -Throw '*already exists*'
+    }
+
+    It 'list says "modified since" after an edit, "written by hand" without provenance' {
+        Initialize-WsCreatorMachine -Template dev -Name box -User alice -Apply
+        Add-Content -Path 'TestDrive:\machines\box\user-data.yaml' -Value 'packages: [htop]'
+        New-TestRepo -Name 'hand'
+        InModuleScope WsCreator {
+            Get-MachineProvenance (Get-MachineDir 'box') | Should -BeLike '*, modified since'
+            Get-MachineProvenance (Get-MachineDir 'hand') | Should -Be 'written by hand'
+        }
+    }
+
+    It 'ignores line endings in the provenance hash (git checkout with CRLF)' {
+        Initialize-WsCreatorMachine -Template dev -Name box -User alice -Apply
+        $p = (Get-PSDrive TestDrive).Root + '\machines\box\machine.psd1'
+        [IO.File]::WriteAllText($p, ([IO.File]::ReadAllText($p) -replace "`n", "`r`n"))
+        InModuleScope WsCreator { Get-MachineProvenance (Get-MachineDir 'box') | Should -Not -BeLike '*modified since' }
     }
 }
 
@@ -136,7 +261,7 @@ Describe 'Get-SshHostConfig' {
 
 Describe 'Repo structure' {
     It '<_> is cloud-config without a template engine' -ForEach @(
-        Get-ChildItem -Path (Join-Path (Split-Path $PSScriptRoot -Parent) 'src\WsCreator\cloud-config'), (Join-Path (Split-Path $PSScriptRoot -Parent) 'examples') -Recurse -Filter *.yaml |
+        Get-ChildItem -Path (Join-Path (Split-Path $PSScriptRoot -Parent) 'src\WsCreator\cloud-config'), (Join-Path (Split-Path $PSScriptRoot -Parent) 'src\WsCreator\templates') -Recurse -Filter *.yaml |
             ForEach-Object { [IO.Path]::GetRelativePath((Split-Path $PSScriptRoot -Parent), $_.FullName) }
     ) {
         $text = Get-Content -Path (Join-Path $repo $_) -Raw

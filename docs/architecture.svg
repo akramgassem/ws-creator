@@ -14,7 +14,7 @@
 
   <rect x="40" y="60" width="280" height="60" rx="8" fill="#fff" stroke="#85B7EB" stroke-dasharray="4 3"/>
   <text x="180" y="84" font-size="13" font-weight="600" fill="#0C447C" text-anchor="middle">WS_CREATOR_MACHINES\&lt;name&gt;\  (who)</text>
-  <text x="180" y="104" font-size="12" fill="#185FA5" text-anchor="middle">outside the repo, private · example: examples\</text>
+  <text x="180" y="104" font-size="12" fill="#185FA5" text-anchor="middle">outside the module, private · from: ws-creator init</text>
 
   <rect x="40" y="134" width="280" height="60" rx="8" fill="#fff" stroke="#85B7EB"/>
   <text x="180" y="158" font-size="13" font-weight="600" fill="#0C447C" text-anchor="middle">cloud-config\  ·  files\  ·  modules\</text>

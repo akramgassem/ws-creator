@@ -4,6 +4,16 @@ function Remove-WsCreatorMachine {
     Deletes the distro (confirmed by typing its name). No partial purge: cloud-init removes
     nothing, so purge, then recreate (immutable infrastructure).
     Refuses while unpushed work remains, unless -Force.
+    .PARAMETER Name
+    The machine: folder <WS_CREATOR_MACHINES>\<Name>\, and the distro of the same name.
+    .PARAMETER Apply
+    Do it. Without it, only shows the steps (dry run).
+    .PARAMETER Force
+    Purge despite unpushed work ("!" lines).
+    .EXAMPLE
+    ws-creator purge my-machine -Apply
+    .LINK
+    https://github.com/akramgassem/ws-creator
     #>
     param([Parameter(Mandatory)][string]$Name, [switch]$Apply, [switch]$Force)
     $script:Apply = $Apply.IsPresent

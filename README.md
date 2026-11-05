@@ -3,6 +3,7 @@
 WSL environment launcher: a folder describes a machine, ws-creator builds it (cloud-init,
 then a few scripts), evolves it and deletes it.
 
+    ws-creator init   <template> <name> [-Apply]         machine folder from a template, with your user, key, port, subnet
     ws-creator new    <machine> [-Apply]                 creates the distro (from the image if there is one) and applies everything
     ws-creator apply  <machine> [-Only a,b] [-Apply]     reapplies fragments and modules on an existing distro
     ws-creator purge  <machine> [-Apply] [-Force]        deletes the distro (then new to rebuild it)
@@ -11,9 +12,9 @@ then a few scripts), evolves it and deletes it.
     ws-creator status <machine>                          distro, disk, cloud-init, containers, gh
     ws-creator code   <machine>                          opens VS Code on the machine's ~/src
     ws-creator doctor                                    WSL, network, Falcon, conflicts, key permissions
-    ws-creator list                                      machines and distros
+    ws-creator list   [-Refresh]                         templates, machines (and where they come from), distros
 
-Without `-Apply`: dry run, nothing is executed. `purge` also asks you to type the machine's
+Without `-Apply`: dry run, nothing is executed or written. `purge` also asks you to type the machine's
 name, and refuses while unpushed work remains in `~/src` or `~/scratch` (uncommitted
 changes, unpushed commits, stash) unless `-Force`. `new`, `apply` and `image` print how
 long they took.
@@ -38,24 +39,45 @@ ws-creator doctor
 
 ## Get started
 
-The module holds the tool, not your machines: `examples/` has one to copy.
+The module holds the tool and two templates, not your machines. `init` copies a template
+into your machines folder, with your user, SSH key (`~\.ssh\id_ed25519.pub`), a free SSH
+port and a free podman subnet; the copy is then yours to edit.
+
+```powershell
+ws-creator list                          # templates and machines
+ws-creator init dev my-machine           # dry run: the values init would use
+ws-creator init dev my-machine -Apply    # writes <WS_CREATOR_MACHINES>\my-machine\
+ws-creator new my-machine -Apply         # creates the distro
+```
+
+| Template | For |
+|---|---|
+| `dev` | a work machine: sudo, podman, gh, node, python, git guardrails |
+| `agent-sandbox` | an agent: no sudo, no podman group, no Windows disk or programs |
 
 | What | Where, by default | Variable to change it |
 |---|---|---|
 | your machines (config, to keep in a private repo) | `%APPDATA%\ws-creator\machines` | `WS_CREATOR_MACHINES` |
+| your template catalogs | — | `WS_CREATOR_TEMPLATES` |
+| clones of git catalogs (rebuildable) | `%LOCALAPPDATA%\ws-creator\catalogs` | — |
 | base images (rebuildable) | `%LOCALAPPDATA%\ws-creator\images` | `WS_CREATOR_IMAGES` |
-| distro disks | `Location` in each `machine.psd1` | — |
+| distro disks | `Location` in each `machine.psd1` | `WS_CREATOR_LOCATION` (for `init`) |
+
+### Your own templates
+
+A template is a valid machine folder with a one-line `Description` key in `machine.psd1`; a
+catalog is a folder of templates, local or a git repo. `WS_CREATOR_TEMPLATES` lists catalogs,
+separated by `;`, searched before the module's:
 
 ```powershell
-$machines = "$env:APPDATA\ws-creator\machines"
-New-Item -ItemType Directory -Force $machines | Out-Null
-Invoke-WebRequest https://github.com/akramgassem/ws-creator/archive/refs/heads/main.zip -OutFile $env:TEMP\wsc.zip
-Expand-Archive $env:TEMP\wsc.zip $env:TEMP\wsc -Force
-Copy-Item -Recurse $env:TEMP\wsc\ws-creator-main\examples\agent-sandbox $machines
-# in the copy: the key from ~\.ssh\id_ed25519.pub in user-data.yaml, Location in machine.psd1
-ws-creator new agent-sandbox            # dry run
-ws-creator new agent-sandbox -Apply
+$env:WS_CREATOR_TEMPLATES = 'D:\templates;https://github.com/acme/ws-templates#main'
+ws-creator list -Refresh                 # clones or fetches the git catalogs
 ```
+
+The first catalog holding a name wins; `list` shows the others as shadowed. `list` shows
+each template's real source, and for each machine whether `init` copied it ("copied from
+..."), whether it changed since ("modified since") or whether it was "written by hand". A
+private git catalog needs git credentials on Windows (Git Credential Manager).
 
 ## Layout
 
@@ -64,10 +86,11 @@ fragments, files and scripts (paths below are relative to `src/WsCreator/`).
 
 | Folder | Holds | Format |
 |---|---|---|
-| `<WS_CREATOR_MACHINES>/<name>/` | **who**: a machine (the folder name is the distro name), outside the module; example in `examples/` | `machine.psd1`, `user-data.yaml`, `files/` |
+| `<WS_CREATOR_MACHINES>/<name>/` | **who**: a machine (the folder name is the distro name), outside the module; created by `init` from a template | `machine.psd1`, `user-data.yaml`, `files/` |
 | `cloud-config/` | **how**: shared fragments, without variables | cloud-config |
 | `files/` | **what**: files copied as is, path = destination (`files/usr/local/bin/x` -> `/usr/local/bin/x`) | text files |
 | `modules/` | what cloud-init cannot express (agent) | bash |
+| `templates/` | the module's templates (`dev`, `agent-sandbox`): valid machines with a `Description` | machine folders |
 | `Public/`, `Private/` | the tool: one command = one function in `Public/`, building blocks in `Private/` | PowerShell module |
 | `tests/` (repo root) | module tests | Pester |
 
@@ -232,7 +255,7 @@ Invoke-ScriptAnalyzer -Path src -Recurse -Settings PSScriptAnalyzerSettings.psd1
 
 The tests cover what does not touch WSL: reading and validating machines, `apply`'s `-Only`
 selection, conflicts, SSH config, the structure rules (no Jinja, Linux line endings in
-`files/`, nothing under `/home`), and the machine in `examples/`. The rest is tried on a
+`files/`, nothing under `/home`), the templates, catalogs and `init`. The rest is tried on a
 throwaway machine (`<WS_CREATOR_MACHINES>/<test>/`, then `wsl --unregister`).
 
 ## Usage rules

@@ -1,6 +1,6 @@
 # Design: template catalog and `ws-creator init`
 
-Status: proposed · target: 0.2.0
+Status: accepted, implemented in 0.2.0
 
 ## Context
 
