@@ -1,21 +1,34 @@
-# Publishes to the PowerShell Gallery when a tag vX.Y.Z equal to ModuleVersion is pushed
-# (secret PSGALLERY_API_KEY: API key of the powershellgallery.com account, scoped to WsCreator)
+# Release on a tag vX.Y.Z equal to ModuleVersion: checks CHANGELOG.md has a section for the
+# version, publishes to the PowerShell Gallery (secret PSGALLERY_API_KEY: API key of the
+# powershellgallery.com account, scoped to WsCreator), then creates the GitHub Release with
+# that section as its notes.
 name: release
 on:
   push:
     tags: ['v*']
 permissions:
-  contents: read
+  contents: write   # gh release create
 jobs:
   publish:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Check the version, then publish
+      - uses: actions/checkout@v7
+      - name: Check the version and the changelog
         shell: pwsh
-        env:
-          PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
         run: |
           $version = (Import-PowerShellDataFile src/WsCreator/WsCreator.psd1).ModuleVersion
           if ("v$version" -ne $env:GITHUB_REF_NAME) { throw "tag $env:GITHUB_REF_NAME != ModuleVersion $version" }
-          Publish-PSResource -Path src/WsCreator -Repository PSGallery -ApiKey $env:PSGALLERY_API_KEY
+          $changelog = Get-Content -Path CHANGELOG.md -Raw
+          $section = [regex]::Match($changelog, "(?ms)^## \[$([regex]::Escape($version))\][^\n]*\n(.*?)(?=^## \[|^\[[^\]]+\]: |\z)")
+          if (-not $section.Success -or -not $section.Groups[1].Value.Trim()) { throw "CHANGELOG.md has no section for $version" }
+          Set-Content -Path "$env:RUNNER_TEMP/notes.md" -Value $section.Groups[1].Value.Trim()
+      - name: Publish to the PowerShell Gallery
+        shell: pwsh
+        env:
+          PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+        run: Publish-PSResource -Path src/WsCreator -Repository PSGallery -ApiKey $env:PSGALLERY_API_KEY
+      - name: GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create $env:GITHUB_REF_NAME --title "ws-creator $($env:GITHUB_REF_NAME.TrimStart('v'))" --notes-file "$env:RUNNER_TEMP/notes.md" --verify-tag

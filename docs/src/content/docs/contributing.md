@@ -18,4 +18,4 @@ Docs (Starlight, `docs/`); the command reference is generated from `Get-Help`:
 cd docs; npm ci; npm run dev
 ```
 
-Release: bump `ModuleVersion`, merge, push tag `v<version>`.
+Release: bump `ModuleVersion`, add its section to `CHANGELOG.md`, merge, push tag `v<version>`: the Gallery and a GitHub Release follow.

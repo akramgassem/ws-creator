@@ -1,6 +1,6 @@
 @{
     RootModule           = 'WsCreator.psm1'
-    ModuleVersion        = '0.2.0'
+    ModuleVersion        = '0.2.1'
     GUID                 = '2fda313d-cda1-456b-b521-ef744cd681f0'
     Author               = 'Akram Gassem'
     Copyright            = '(c) 2026 Akram Gassem. MIT License.'
@@ -17,9 +17,10 @@
     AliasesToExport      = @('ws-creator')
     PrivateData          = @{
         PSData = @{
-            Tags       = @('WSL', 'cloud-init', 'Windows', 'devenv', 'podman', 'Linux')
-            LicenseUri = 'https://github.com/akramgassem/ws-creator/blob/main/LICENSE'
-            ProjectUri = 'https://github.com/akramgassem/ws-creator'
+            Tags         = @('WSL', 'workspace', 'developer', 'cloud-init', 'Windows', 'devenv', 'podman', 'Linux')
+            LicenseUri   = 'https://github.com/akramgassem/ws-creator/blob/main/LICENSE'
+            ProjectUri   = 'https://akramgassem.github.io/ws-creator/'
+            ReleaseNotes = 'https://github.com/akramgassem/ws-creator/blob/main/CHANGELOG.md'
         }
     }
 }
