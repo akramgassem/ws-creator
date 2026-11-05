@@ -1,19 +1,13 @@
 {
   "title": "ws-creator",
-  "description": "WSL machines described by folders: cloud-init, then a few scripts.",
+  "description": "Workspace creator for developers on Windows, with WSL.",
+  "customCss": ["./src/styles/theme.css"],
   "sidebar": [
-    { "label": "Start here", "items": ["getting-started"] },
+    "getting-started",
     { "label": "Guides", "items": [{ "autogenerate": { "directory": "guides" } }] },
-    {
-      "label": "Reference",
-      "items": [
-        { "label": "Commands", "items": [{ "autogenerate": { "directory": "reference/commands" } }] },
-        "reference/machine",
-        "reference/fragments",
-        "reference/configuration"
-      ]
-    },
+    { "label": "Commands", "items": [{ "autogenerate": { "directory": "reference/commands" } }] },
+    { "label": "Reference", "items": ["reference/machine", "reference/fragments", "reference/configuration"] },
     { "label": "Explanation", "items": [{ "autogenerate": { "directory": "explanation" } }] },
-    { "label": "Contributing", "items": ["contributing"] }
+    "contributing"
   ]
 }

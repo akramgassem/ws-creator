@@ -4,7 +4,7 @@
     GUID                 = '2fda313d-cda1-456b-b521-ef744cd681f0'
     Author               = 'Akram Gassem'
     Copyright            = '(c) 2026 Akram Gassem. MIT License.'
-    Description          = 'WSL environments described by folders: cloud-init, then a few scripts. Create, reapply and purge a machine from Windows.'
+    Description          = 'Workspace creator for developers on Windows: WSL workspaces described by folders, built with cloud-init. Create, update and delete them from PowerShell.'
     PowerShellVersion    = '7.0'
     CompatiblePSEditions = @('Core')
     FunctionsToExport    = @(

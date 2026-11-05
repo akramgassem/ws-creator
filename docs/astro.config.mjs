@@ -18,6 +18,7 @@ export default defineConfig({
     starlight({
       title: config.title,
       description: config.description,
+      customCss: config.customCss,
       social: repository ? [{ icon: 'github', label: 'GitHub', href: repository }] : [],
       editLink: repository && env.SITE_BRANCH ? { baseUrl: `${repository}/edit/${env.SITE_BRANCH}/docs/` } : undefined,
       lastUpdated: true,

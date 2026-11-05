@@ -3,8 +3,8 @@
 [![ci](https://github.com/akramgassem/ws-creator/actions/workflows/ci.yml/badge.svg)](https://github.com/akramgassem/ws-creator/actions/workflows/ci.yml)
 [![PowerShell Gallery](https://img.shields.io/powershellgallery/v/WsCreator)](https://www.powershellgallery.com/packages/WsCreator)
 
-WSL environment launcher: a folder describes a machine, ws-creator builds it (cloud-init,
-then a few scripts), evolves it and deletes it.
+Workspace creator for developers on Windows: a folder describes your WSL workspace,
+ws-creator builds it (cloud-init, then a few scripts), updates it and deletes it.
 
 **Documentation: https://akramgassem.github.io/ws-creator/**
 
@@ -16,6 +16,16 @@ ssh my-machine                          # or: ws-creator code my-machine
 ```
 
 Requirements: Windows 11, WSL 2 in mirrored networking mode, PowerShell 7.4+.
+
+## Why
+
+- **A quiet sandbox per project**: no tool, version or setting leaks between projects or onto Windows.
+- **Many toolchains, no clutter**: each workspace has only what its work needs.
+- **A fresh machine, on demand**: test a setup, an onboarding guide or a release from scratch.
+- **Agents on a leash**: coding agents without sudo or Windows disk, behind git guardrails.
+- **Throw away, start over**: purge and recreate; purge refuses while work is unpushed.
+- **One git identity per workspace**: personal and work accounts never mix.
+- **Plain files**: standard cloud-config, versioned and shared as templates.
 
     ws-creator init   <template> <name> [-Apply]         machine folder from a template
     ws-creator new    <machine> [-Apply]                 creates the distro and applies everything

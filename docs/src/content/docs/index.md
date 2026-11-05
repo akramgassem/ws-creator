@@ -1,9 +1,10 @@
 ---
 title: ws-creator
-description: WSL machines described by folders. Create, reapply and purge a machine from Windows.
+description: Workspace creator for developers on Windows, with WSL.
 template: splash
 hero:
-  tagline: A folder describes a WSL machine; ws-creator builds it with cloud-init, evolves it and deletes it.
+  title: ws-creator
+  tagline: Workspace creator for developers on Windows. A folder describes your WSL workspace; ws-creator builds it, updates it, deletes it.
   actions:
     - text: Get started
       link: ./getting-started/
@@ -12,25 +13,24 @@ hero:
 
 ```powershell
 Install-PSResource WsCreator
-ws-creator init dev my-machine -Apply   # a machine folder from a template, with your user and key
-ws-creator new my-machine -Apply        # the WSL distro, provisioned by cloud-init
-ssh my-machine                          # or: ws-creator code my-machine
+ws-creator init dev my-machine -Apply
+ws-creator new my-machine -Apply
+ssh my-machine
 ```
 
-## Why
+## Why ws-creator
 
-- **Plain files, no template engine.** A machine is a `machine.psd1` and a `user-data.yaml`
-  of standard cloud-config. What you read is what runs.
-- **Rebuild instead of repair.** cloud-init adds and never removes: to take something back,
-  purge and recreate. `purge` refuses while you have unpushed work.
-- **Guardrails in git, not in an agent.** Machine-wide hooks stop secrets, forbidden names
-  and pushes to merged pull requests, for humans and coding agents alike.
-- **Made for real workstations.** Mirrored networking, unique ports and subnets checked
-  across machines, and fragments that work under an EDR such as CrowdStrike Falcon.
-
-## Where to go next
-
-- [Getting started](./getting-started/): install, create and open your first machine.
-- [Your own templates](./guides/templates/): personal and team catalogs.
-- [Commands](./reference/commands/): every subcommand, generated from `Get-Help`.
-- [Architecture](./explanation/architecture/): how a folder becomes a machine.
+- **A quiet sandbox per project.** Each workspace is its own Linux machine: no tool, version
+  or setting leaks from one project to another, or onto Windows.
+- **Many toolchains, no clutter.** Node, Python, Rust, containers: each workspace has only
+  what its work needs.
+- **A fresh machine, on demand.** Test a setup, an onboarding guide or a release on a
+  machine that has never seen your laptop.
+- **Agents on a leash.** Run coding agents in a workspace without sudo or Windows disk;
+  git guardrails stop secrets and pushes to merged branches.
+- **Throw away, start over.** Purge and recreate in one command; purge refuses while work
+  is unpushed.
+- **One git identity per workspace.** Personal and work accounts, keys and tokens stay in
+  their own workspace: nothing to switch.
+- **Plain files.** A workspace is a folder of standard cloud-config, versioned and shared
+  as a template.

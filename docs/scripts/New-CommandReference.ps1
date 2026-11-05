@@ -51,9 +51,8 @@ foreach ($sub in $commands.Keys) {
     $synopsis = ($help.Synopsis -replace '\s*\r?\n\s*', ' ').Trim()
     $order++
     $md = [Collections.Generic.List[string]]::new()
-    $md.AddRange([string[]]@('---', "title: $(Format-Yaml $title)", "description: $(Format-Yaml $synopsis)", 'sidebar:', "  order: $order", '---', ''))
-    $md.Add((Format-Text $synopsis)); $md.Add('')
-    $md.Add("PowerShell function: ``$fn`` (``Get-Help $fn -Full``)."); $md.Add('')
+    $md.AddRange([string[]]@('---', "title: $(Format-Yaml $title)", "description: $(Format-Yaml $synopsis)", 'sidebar:', "  label: $(Format-Yaml $(if ($sub -eq 'ws-creator') { 'Overview' } else { $sub }))", "  order: $order", '---', ''))
+    $md.Add("$(Format-Text $synopsis) ``Get-Help $fn -Full``"); $md.Add('')
 
     $md.Add('## Syntax'); $md.Add(''); $md.Add('```powershell')
     $md.Add((($help.syntax | Out-String -Width 4096).Trim() -replace '\s*\r?\n\s*', "`n" -replace '\[<CommonParameters>\]', '').Trim())

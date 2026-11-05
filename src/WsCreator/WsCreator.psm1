@@ -1,4 +1,4 @@
-# ws-creator module: WSL machines described by <WS_CREATOR_MACHINES>\<name>\. One command = one
+# ws-creator module: developer workspaces on WSL, described by <WS_CREATOR_MACHINES>\<name>\. One command = one
 # function in Public\; Private\ holds the building blocks (WSL, cloud-init seed, modules, Windows-side SSH).
 # The module is self-contained: cloud-config\, files\, modules\ and templates\ ship with it (PowerShell Gallery).
 
