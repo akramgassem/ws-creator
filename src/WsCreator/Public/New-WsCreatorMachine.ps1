@@ -1,7 +1,7 @@
 function New-WsCreatorMachine {
     <#
     .SYNOPSIS
-    Crée la distro (depuis <WS_CREATOR_IMAGES>\<nom>.tar si elle existe) et joue fragments puis scripts.
+    Creates the distro (from <WS_CREATOR_IMAGES>\<name>.tar if it exists) and applies fragments, then modules.
     #>
     param([Parameter(Mandatory)][string]$Name, [switch]$Apply)
     $script:Apply = $Apply.IsPresent

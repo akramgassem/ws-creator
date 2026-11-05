@@ -4,7 +4,7 @@
     GUID                 = '2fda313d-cda1-456b-b521-ef744cd681f0'
     Author               = 'Akram Gassem'
     Copyright            = '(c) 2026 Akram Gassem. MIT License.'
-    Description          = 'Environnements WSL décrits par des dossiers : cloud-init, puis quelques scripts. Créer, rejouer, purger une machine depuis Windows.'
+    Description          = 'WSL environments described by folders: cloud-init, then a few scripts. Create, reapply and purge a machine from Windows.'
     PowerShellVersion    = '7.0'
     CompatiblePSEditions = @('Core')
     FunctionsToExport    = @(

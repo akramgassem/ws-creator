@@ -1,31 +1,31 @@
-# Machine agent-sandbox — bac à sable pour agent
+# agent-sandbox machine: a sandbox for an agent
 
-Machine Linux jetable (distro WSL créée par l'outil ws-creator), sans accès au disque ni aux
-programmes Windows. Tout ce qui doit survivre est poussé ou remis à l'utilisateur.
+Throwaway Linux machine (WSL distro created by ws-creator), with no access to the Windows
+disk or Windows programs. Anything that must survive is pushed or handed to the user.
 
-## Rangement
+## Layout
 
-- Dépôts : `~/src/<hôte>/<owner>/<repo>`
-- Essais jetables : `~/scratch/<sujet>`
-- Jamais de fichier de travail directement dans `~`
+- Repos: `~/src/<host>/<owner>/<repo>`
+- Throwaway experiments: `~/scratch/<topic>`
+- Never a work file directly in `~`
 
-## Garde-fous
+## Guardrails
 
-- `machine-state` (lancé au début de chaque session) : état des dépôts, miettes
-- Avant de dire qu'un travail est terminé : `/menage` (miettes de la session, puis `machine-leftovers`,
-  ce qui serait perdu)
-- Supprimer une branche : `machine-prune-branch <dépôt> <branche>`, qui vérifie que sa PR est fusionnée
-- Hooks git de la machine (secrets, push sur PR fusionnée) : un refus se corrige,
-  jamais `--no-verify` sans accord explicite
+- `machine-state` (run at the start of each session): repo state, crumbs
+- Before saying a piece of work is done: `/tidy` (the session's crumbs, then `machine-leftovers`,
+  what would be lost)
+- Deleting a branch: `machine-prune-branch <repo> <branch>`, which checks that its PR is merged
+- The machine's git hooks (secrets, push to a merged PR): fix what they refuse,
+  never `--no-verify` without explicit agreement
 
-## Limites (voulues)
+## Limits (on purpose)
 
-- Pas de `sudo` ni de conteneurs : l'utilisateur n'est pas administrateur de la machine.
-  Un paquet ou un outil manque ? Le signaler à l'utilisateur, qui l'ajoute à la machine dans ws-creator
-- Outils utilisateur via mise uniquement (dans le `mise.toml` du projet)
+- No `sudo` and no containers: the user is not an administrator of the machine.
+  A package or tool is missing? Tell the user, who adds it to the machine in ws-creator
+- User tools through mise only (in the project's `mise.toml`)
 
-## Règles
+## Rules
 
-- Navigateur et connecteurs de l'app (Chrome…) : ils agissent côté Windows, avec les sessions
-  de l'utilisateur, hors de ce bac à sable. Ne pas les utiliser, sauf demande explicite
-- Jamais de secret commité ; `.env` toujours dans `.gitignore`
+- Browser and app connectors (Chrome...): they act on the Windows side, with the user's
+  sessions, outside this sandbox. Do not use them unless explicitly asked
+- Never commit a secret; `.env` always in `.gitignore`

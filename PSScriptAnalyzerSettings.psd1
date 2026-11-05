@@ -1,11 +1,11 @@
-# Lint du code PowerShell : Invoke-ScriptAnalyzer -Path src -Recurse -Settings PSScriptAnalyzerSettings.psd1
+# PowerShell lint: Invoke-ScriptAnalyzer -Path src -Recurse -Settings PSScriptAnalyzerSettings.psd1
 @{
     ExcludeRules = @(
-        # Write-Host est l'affichage de la CLI (aperçu, étapes), pas une donnée pour le pipeline
+        # Write-Host is the CLI's display (dry run, steps), not data for the pipeline
         'PSAvoidUsingWriteHost'
-        # ws-creator fait l'inverse de -WhatIf : aperçu par défaut, -Apply pour agir (Invoke-Step)
+        # ws-creator does the opposite of -WhatIf: dry run by default, -Apply to act (Invoke-Step)
         'PSUseShouldProcessForStateChangingFunctions'
-        # le BOM ne sert qu'à Windows PowerShell 5.1 ; le module exige PowerShell 7
+        # the BOM only matters to Windows PowerShell 5.1; the module requires PowerShell 7
         'PSUseBOMForUnicodeEncodedFile'
     )
 }

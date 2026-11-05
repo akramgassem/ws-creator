@@ -1,9 +1,9 @@
 function Get-WsCreatorMachineList {
     <#
     .SYNOPSIS
-    Machines décrites (<WS_CREATOR_MACHINES>\) et distros WSL.
+    Described machines (<WS_CREATOR_MACHINES>\) and WSL distros.
     #>
-    Write-Host "Machines décrites dans $script:MachinesDir :"
+    Write-Host "Machines described in ${script:MachinesDir}:"
     Get-MachineName
     wsl --list --verbose
 }

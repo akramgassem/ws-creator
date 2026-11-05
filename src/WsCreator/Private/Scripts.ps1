@@ -1,5 +1,5 @@
-# Modules scripts (modules\<m>.sh) : ce que cloud-init n'exprime pas encore. Ils reçoivent
-# les valeurs de machine.psd1 en variables WS_CREATOR_* (pas de secret : visibles dans ps).
+# Script modules (modules\<m>.sh): what cloud-init cannot express yet. They receive the
+# machine.psd1 values as WS_CREATOR_* variables (no secrets: visible in ps).
 function Get-ModuleVariable($m) {
     $vars = @("WS_CREATOR_NAME=$($m.Name)", "WS_CREATOR_USER=$($m.User)")
     if ($m.AgentInstructions) {
@@ -9,7 +9,7 @@ function Get-ModuleVariable($m) {
     return $vars
 }
 
-# Le module part sur l'entrée standard, précédé de modules\lib.sh (fonctions communes)
+# The module goes over stdin, preceded by modules\lib.sh (shared functions)
 function Invoke-Module($m, [string]$Script) {
     $vars = Get-ModuleVariable $m
     $lib = Get-Content -Path (Join-Path -Path $script:Root -ChildPath 'modules\lib.sh') -Raw
@@ -17,7 +17,7 @@ function Invoke-Module($m, [string]$Script) {
         wsl -d $m.Name -u root --exec env @vars bash -c "tr -d '\r' | bash -s"
 }
 
-# Fragments par cloud-init, puis scripts, puis alias SSH Windows ; la distro est arrêtée à la fin
+# Fragments through cloud-init, then modules, then the Windows SSH alias; the distro is stopped at the end
 function Invoke-Machine($m, [string[]]$Only) {
     $parts = Select-MachinePart $m $Only
     if ($parts.CloudConfig) {

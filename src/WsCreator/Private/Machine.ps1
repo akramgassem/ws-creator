@@ -1,5 +1,5 @@
-# Une machine = machines\<nom>\ : machine.psd1 (côté Windows), user-data.yaml (cloud-config
-# de la machine), files\ (fichiers système propres à la machine), et ce que machine.psd1 cite.
+# A machine = machines\<name>\: machine.psd1 (Windows side), user-data.yaml (the machine's
+# cloud-config), files\ (system files specific to the machine), and what machine.psd1 refers to.
 
 function Get-MachineDir([string]$Name) { Join-Path -Path $script:MachinesDir -ChildPath $Name }
 
@@ -10,8 +10,8 @@ function Get-MachineName {
         ForEach-Object { $_.Name }
 }
 
-# Valeurs de wsl.conf écrites dans user-data.yaml : ws-creator les lit pour le côté Windows (alias
-# SSH, VS Code) et vérifie qu'elles concordent avec le reste, au lieu de les générer.
+# wsl.conf values written in user-data.yaml: ws-creator reads them for the Windows side (SSH
+# alias, VS Code) and checks they match the rest, instead of generating them.
 function Get-UserDataValue([string]$Text) {
     $values = @{}
     if ($Text -match '(?m)^\s*hostname=(\S+)') { $values.Hostname = $Matches[1] }
@@ -21,7 +21,7 @@ function Get-UserDataValue([string]$Text) {
 }
 
 function Get-Machine([string]$Name) {
-    if (-not $Name) { throw 'Machine name missing (machines\<nom>\)' }
+    if (-not $Name) { throw 'Machine name missing (machines\<name>\)' }
     $dir = Get-MachineDir $Name
     $psd1 = Join-Path -Path $dir -ChildPath 'machine.psd1'
     $userData = Join-Path -Path $dir -ChildPath 'user-data.yaml'
@@ -64,8 +64,8 @@ function Get-Machine([string]$Name) {
         $pub = Join-Path -Path $script:SshDir -ChildPath $m.Ssh.PublicKey
         if (-not (Test-Path -Path $pub)) { throw "Machine '$Name': public key not found: ~\.ssh\$($m.Ssh.PublicKey)" }
     }
-    # les valeurs uniques entre machines sont dans machine.psd1 (ws-creator les contrôle) et dans
-    # user-data.yaml (la machine les applique) : elles doivent concorder
+    # values unique across machines are in machine.psd1 (ws-creator checks them) and in
+    # user-data.yaml (the machine applies them): they must match
     if ('ssh' -in $m.CloudConfig) {
         if (-not $m.Ssh) { throw "Machine '$Name': fragment ssh needs Ssh in machine.psd1" }
         if ($text -notmatch "(?m)^\s*Port\s+$($m.Ssh.Port)\s*$") {
@@ -74,7 +74,7 @@ function Get-Machine([string]$Name) {
         if ($text -notmatch "(?m)^\s*AllowUsers\s+$([regex]::Escape($m.User))\s*$") {
             throw "Machine '$Name': user-data.yaml has no sshd 'AllowUsers $($m.User)'"
         }
-        $key = ((Get-Content -Path $pub -Raw).Trim() -split '\s+')[0..1] -join ' '   # type et clé, sans commentaire
+        $key = ((Get-Content -Path $pub -Raw).Trim() -split '\s+')[0..1] -join ' '   # type and key, without the comment
         if (-not $text.Contains($key)) {
             throw "Machine '$Name': ~\.ssh\$($m.Ssh.PublicKey) is not in ssh_authorized_keys of user-data.yaml"
         }
@@ -89,8 +89,8 @@ function Get-Machine([string]$Name) {
     return $m
 }
 
-# Windows et toutes les distros partagent la pile réseau (WSL mirrored) : un port SSH ou un
-# sous-réseau en double casse une autre machine sans message.
+# Windows and all distros share the network stack (WSL mirrored): a duplicate SSH port or
+# subnet silently breaks another machine.
 function Test-MachineConflict($m) {
     foreach ($other in Get-MachineName | Where-Object { $_ -ne $m.Name }) {
         $o = Import-PowerShellDataFile -Path (Join-Path -Path (Get-MachineDir $other) -ChildPath 'machine.psd1')
@@ -107,7 +107,7 @@ function Test-MachineConflict($m) {
     }
 }
 
-# -Only : noms de fragments ou de scripts de la machine ; sans -Only, tout
+# -Only: names of the machine's fragments or modules; without -Only, everything
 function Select-MachinePart($m, [string[]]$Only) {
     foreach ($o in $Only) {
         if ($o -notin $m.CloudConfig -and $o -notin $m.Modules) { throw "'$o' is neither a fragment nor a module of machine '$($m.Name)'" }

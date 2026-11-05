@@ -1,52 +1,52 @@
 #!/usr/bin/env bash
-# État de la machine en quelques lignes : conteneurs, GitHub, dépôts de ~/src et ~/scratch, miettes.
-# Lisible par un humain comme par un agent (hook de démarrage de session). Installé par
-# le module guard. N'interroge pas le réseau, sauf `gh auth status`.
+# Machine state in a few lines: containers, GitHub, repos in ~/src and ~/scratch, crumbs.
+# Readable by a human as well as an agent (session start hook). Installed by the guard
+# module. Does not query the network, except `gh auth status`.
 set -uo pipefail
 home=$(getent passwd "$(id -un)" | cut -d: -f6)
 export PATH="$home/.local/share/mise/shims:$PATH"
 
-echo "Machine $(hostname) ($(cat /etc/ws-creator-profile 2>/dev/null || echo 'hors ws-creator'))"
+echo "Machine $(hostname) ($(cat /etc/ws-creator-profile 2>/dev/null || echo 'not from ws-creator'))"
 
-# services des projets (compose.yaml de chaque dépôt) : ce qui tourne, si le socket est accessible
+# project services (each repo's compose.yaml): what is running, if the socket is reachable
 if command -v docker >/dev/null && running=$(docker ps --format '{{.Names}}' 2>/dev/null); then
     running=${running//$'\n'/ }
-    echo "Conteneurs : ${running:-aucun}"
+    echo "Containers: ${running:-none}"
 fi
 
 if command -v gh >/dev/null; then
-    if gh auth status --hostname github.com >/dev/null 2>&1; then echo "GitHub (gh) : connecté"
-    else echo "GitHub (gh) : NON CONNECTÉ (gh auth login)"; fi
+    if gh auth status --hostname github.com >/dev/null 2>&1; then echo "GitHub (gh): logged in"
+    else echo "GitHub (gh): NOT LOGGED IN (gh auth login)"; fi
 fi
 if command -v chezmoi >/dev/null && [ ! -d "$home/.local/share/chezmoi" ]; then
-    echo "Dotfiles : non appliqués (gh auth login, puis chezmoi init --apply <compte>)"
+    echo "Dotfiles: not applied (gh auth login, then chezmoi init --apply <account>)"
 fi
 
-echo "Dépôts (branche, état local ; sans git fetch) :"
+echo "Repos (branch, local state; no git fetch):"
 found=0
 while read -r git; do
     found=1
     repo=${git%/.git}
     branch=$(git -C "$repo" branch --show-current 2>/dev/null)
-    [ -n "$branch" ] || branch="(détachée $(git -C "$repo" rev-parse --short HEAD 2>/dev/null))"
+    [ -n "$branch" ] || branch="(detached $(git -C "$repo" rev-parse --short HEAD 2>/dev/null))"
     notes=()
     n=$(git -C "$repo" status --porcelain 2>/dev/null | wc -l)
-    [ "$n" -gt 0 ] && notes+=("$n fichier(s) modifié(s)")
+    [ "$n" -gt 0 ] && notes+=("$n modified file(s)")
     track=$(git -C "$repo" for-each-ref --format='%(upstream:short)|%(upstream:track)' "refs/heads/$branch" 2>/dev/null)
     case "$track" in
         "") ;;
-        "|"*) notes+=("sans upstream") ;;
-        *"[gone]"*) notes+=("upstream supprimé (PR fusionnée ?)") ;;
+        "|"*) notes+=("no upstream") ;;
+        *"[gone]"*) notes+=("upstream deleted (PR merged?)") ;;
         *"["*) notes+=("${track#*|}") ;;
     esac
     n=$(git -C "$repo" stash list 2>/dev/null | wc -l)
     [ "$n" -gt 0 ] && notes+=("$n stash")
-    line="  ${repo#"$home"/} : $branch"
+    line="  ${repo#"$home"/}: $branch"
     [ ${#notes[@]} -gt 0 ] && line="$line, $(IFS=,; echo "${notes[*]}" | sed 's/,/, /g')"
     echo "$line"
 done < <(find "$home/src" "$home/scratch" -maxdepth 5 -name .git -prune 2>/dev/null | sort)
-[ $found = 1 ] || echo "  (aucun)"
+[ $found = 1 ] || echo "  (none)"
 
-# miettes laissées par les sessions (signaux locaux seulement) : /menage les ramasse
+# crumbs left by sessions (local signals only): /tidy picks them up
 command -v machine-crumbs >/dev/null && machine-crumbs --local --summary
 true

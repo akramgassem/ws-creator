@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Miettes : ce que les sessions laissent derrière elles et qui encombre, sans être perdu si la
-# machine était effacée (ça, c'est machine-leftovers). Ne supprime rien : /menage nettoie.
-# Lignes « ~ » ; code de sortie 0 : une miette ne fait jamais refuser la purge.
-#   --local    sans réseau (machine-state) : pas de recherche des PR fusionnées
-#   --summary  une ligne « Miettes : N (…) → /menage », rien s'il n'y en a pas
-# Une miette liée à une session Claude le dit : « cette session » (celle qui lance la
-# commande), « session <id> active » (pas touche) ou « session <id> terminée ».
-# Délai d'un dossier de scratch jetable : CRUMBS_SCRATCH_DAYS dans /etc/ws-creator/guard.conf.
-# Installé par le module guard.
+# Crumbs: what sessions leave behind that clutters the machine, without being lost if the
+# machine were deleted (that is machine-leftovers). Deletes nothing: /tidy cleans up.
+# "~" lines; exit code 0: a crumb never makes purge refuse.
+#   --local    no network (machine-state): no lookup of merged PRs
+#   --summary  one line "Crumbs: N (...) → /tidy", nothing if there are none
+# A crumb tied to a Claude session says so: "this session" (the one running the command),
+# "session <id> active" (hands off) or "session <id> ended".
+# Age of a throwaway scratch folder: CRUMBS_SCRATCH_DAYS in /etc/ws-creator/guard.conf.
+# Installed by the guard module.
 set -uo pipefail
 home=$(getent passwd "$(id -un)" | cut -d: -f6)
 export PATH="$home/.local/share/mise/shims:$PATH"
@@ -21,15 +21,15 @@ for arg; do
     case "$arg" in
         --local) local_only=1 ;;
         --summary) summary=1 ;;
-        *) echo "usage : machine-crumbs [--local] [--summary]" >&2; exit 2 ;;
+        *) echo "usage: machine-crumbs [--local] [--summary]" >&2; exit 2 ;;
     esac
 done
 
 declare -A count=()
 crumb() { count[$1]=$(( ${count[$1]:-0} + 1 )); [ $summary = 1 ] || echo "~ $2"; }
 
-# Sessions Claude vivantes : ~/.claude/sessions/<pid>.json dont le processus tourne encore
-# (même heure de démarrage : un pid peut avoir été réutilisé).
+# Live Claude sessions: ~/.claude/sessions/<pid>.json whose process is still running
+# (same start time: a pid may have been reused).
 uid=$(id -u)
 scratchpads=/tmp/claude-$uid
 declare -A live=() session_pid=()
@@ -43,7 +43,7 @@ for f in "$home"/.claude/sessions/*.json; do
     [ -n "$sid" ] && { live[$sid]=$pid; session_pid[$pid]=$sid; }
 done
 
-# session Claude dont descend le processus $1 (vide sinon)
+# Claude session that process $1 descends from (empty otherwise)
 session_of_pid() {
     local p=$1
     while [ -n "$p" ] && [ "$p" -gt 1 ]; do
@@ -51,7 +51,7 @@ session_of_pid() {
         p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
     done
 }
-# session dont $1 est dans le scratchpad (/tmp/claude-<uid>/<projet>/<session>/…), vide sinon
+# session whose scratchpad holds $1 (/tmp/claude-<uid>/<project>/<session>/...), empty otherwise
 session_of_path() {
     local rest=${1#"$scratchpads"/}
     [ "$rest" != "$1" ] || return 0
@@ -61,18 +61,18 @@ session_of_path() {
 self=$(session_of_pid $$)
 who() {
     [ -n "$1" ] || return 0
-    if [ "$1" = "$self" ]; then echo ", cette session"
+    if [ "$1" = "$self" ]; then echo ", this session"
     elif [ -n "${live[$1]:-}" ]; then echo ", session ${1:0:8} active"
-    else echo ", session ${1:0:8} terminée"; fi
+    else echo ", session ${1:0:8} ended"; fi
 }
 since() {
     local s=$1
-    if [ "$s" -ge 86400 ]; then echo "$((s / 86400)) j"
+    if [ "$s" -ge 86400 ]; then echo "$((s / 86400)) d"
     elif [ "$s" -ge 3600 ]; then echo "$((s / 3600)) h"
     else echo "$((s / 60)) min"; fi
 }
 
-# Dépôts de ~/src et ~/scratch, un par dossier git commun (les worktrees d'un dépôt avec lui)
+# Repos in ~/src and ~/scratch, one per common git dir (a repo's worktrees go with it)
 declare -A seen=()
 while read -r git; do
     common=$(git -C "${git%/.git}" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || continue
@@ -93,11 +93,11 @@ while read -r git; do
     for wt in "${worktrees[@]:1}"; do
         sid=$(session_of_path "$wt")
         if [ -n "${prunable[$wt]:-}" ]; then
-            crumb worktree "$name : worktree $wt disparu (git worktree prune)$(who "$sid")"
+            crumb worktree "$name: worktree $wt is gone (git worktree prune)$(who "$sid")"
         elif [ -n "$sid" ] && [ -z "${live[$sid]:-}" ]; then
             dirty=""
-            [ -n "$(git -C "$wt" status --porcelain 2>/dev/null | head -n1)" ] && dirty=", modifications non commitées"
-            crumb worktree "$name : worktree $wt$(who "$sid")$dirty"
+            [ -n "$(git -C "$wt" status --porcelain 2>/dev/null | head -n1)" ] && dirty=", uncommitted changes"
+            crumb worktree "$name: worktree $wt$(who "$sid")$dirty"
         fi
     done
 
@@ -106,72 +106,72 @@ while read -r git; do
     while IFS='|' read -r branch track; do
         case "$branch" in "${default#origin/}"|main|master) continue ;; esac
         notes=()
-        [[ $track == *gone* ]] && notes+=("distante supprimée")
+        [[ $track == *gone* ]] && notes+=("remote deleted")
         if [ $local_only = 0 ] && [ -n "$slug" ] && command -v gh >/dev/null &&
             verdict=$("$bin/machine-prune-branch" --check "$repo" "$branch"); then
             notes+=("${verdict#*"$branch, "}")
         fi
         [ ${#notes[@]} -gt 0 ] || continue
         wt=${checked_out[$branch]:-}
-        [ -n "$wt" ] && notes+=("extraite dans ${wt#"$home"/}$(who "$(session_of_path "$wt")")")
-        crumb branch "$name : branche $branch, $(IFS='|'; echo "${notes[*]}" | sed 's/|/, /g')"
+        [ -n "$wt" ] && notes+=("checked out in ${wt#"$home"/}$(who "$(session_of_path "$wt")")")
+        crumb branch "$name: branch $branch, $(IFS='|'; echo "${notes[*]}" | sed 's/|/, /g')"
     done < <(git -C "$repo" for-each-ref --format='%(refname:short)|%(upstream:track)' refs/heads 2>/dev/null)
     unset checked_out prunable
 done < <(find "$home/src" "$home/scratch" -maxdepth 5 -name .git -prune 2>/dev/null | sort)
 
-# Serveurs en écoute (processus de l'utilisateur) : dossier courant supprimé, ou dans le
-# scratchpad d'une session terminée ; et, hors --local, ceux lancés par cette session.
+# Listening servers (the user's processes): current folder deleted, or inside the scratchpad
+# of an ended session; and, without --local, those started by this session.
 declare -A ports=()
 while read -r addr pid; do
     ports[$pid]="${ports[$pid]:+${ports[$pid]} }${addr##*:}"
 done < <(ss -ltnpH 2>/dev/null | awk '{ n = split($0, a, "pid="); for (i = 2; i <= n; i++) { split(a[i], b, ","); print $4, b[1] } }' | sort -u)
 for pid in "${!ports[@]}"; do
-    [ -n "${session_pid[$pid]:-}" ] && continue   # une session elle-même
+    [ -n "${session_pid[$pid]:-}" ] && continue   # a session itself
     cwd=$(readlink "/proc/$pid/cwd" 2>/dev/null) || continue
     sid=$(session_of_pid "$pid")
     path_sid=$(session_of_path "$cwd")
-    if [[ $cwd == *" (deleted)" ]]; then reason="dossier courant supprimé"
-    elif [ -n "$path_sid" ] && [ -z "${live[$path_sid]:-}" ]; then reason="dans le scratchpad d'une session terminée"
-    elif [ $local_only = 0 ] && [ -n "$sid" ] && [ "$sid" = "$self" ]; then reason="lancé par cette session"
+    if [[ $cwd == *" (deleted)" ]]; then reason="current folder deleted"
+    elif [ -n "$path_sid" ] && [ -z "${live[$path_sid]:-}" ]; then reason="in the scratchpad of an ended session"
+    elif [ $local_only = 0 ] && [ -n "$sid" ] && [ "$sid" = "$self" ]; then reason="started by this session"
     else continue; fi
     age=$(ps -o etimes= -p "$pid" | tr -d ' ')
     args=$(ps -o args= -p "$pid" | cut -c1-70)
-    crumb server "port ${ports[$pid]} : PID $pid ($args), $reason, depuis $(since "${age:-0}")$(who "$sid")"
+    crumb server "port ${ports[$pid]}: PID $pid ($args), $reason, for $(since "${age:-0}")$(who "$sid")"
 done
 
-# ~/scratch/<sujet> dont le README se dit jetable, sans modification depuis CRUMBS_SCRATCH_DAYS jours
+# ~/scratch/<topic> whose README calls itself throwaway, unchanged for CRUMBS_SCRATCH_DAYS days
 for dir in "$home"/scratch/*/; do
     readme=$(find "$dir" -maxdepth 1 -iname 'readme*' -type f 2>/dev/null | head -n1)
     [ -n "$readme" ] || continue
     line=$(head -n1 "$readme" | cut -c1-110)
-    grep -Eiq 'jetable|à jeter|supprimer|temporaire|throwaway|disposable|delete' <<< "$line" || continue
+    grep -Eiq 'throwaway|disposable|temporary|delete' <<< "$line" || continue
     find "$dir" -name .git -prune -o -type f -newermt "$CRUMBS_SCRATCH_DAYS days ago" -print -quit 2>/dev/null |
         grep -q . && continue
     last=$(find "$dir" -name .git -prune -o -type f -printf '%TY-%Tm-%Td\n' 2>/dev/null | sort -r | head -n1)
     git=""
-    find "$dir" -maxdepth 4 -name .git 2>/dev/null | grep -q . && git=", contient un dépôt ou un worktree"
-    crumb scratch "${dir#"$home"/} : « $line », rien de modifié depuis le $last$git"
+    find "$dir" -maxdepth 4 -name .git 2>/dev/null | grep -q . && git=", contains a repo or a worktree"
+    crumb scratch "${dir#"$home"/}: \"$line\", nothing changed since $last$git"
 done
 
-# Conteneurs dont le projet compose a disparu (socket accessible seulement)
+# Containers whose compose project is gone (only if the socket is reachable)
 if command -v docker >/dev/null &&
     list=$(timeout 10 docker ps -a --format '{{.Names}}|{{.State}}|{{index .Labels "com.docker.compose.project.working_dir"}}' 2>/dev/null); then
     while IFS='|' read -r cname state wd; do
         [ -n "$wd" ] && [ ! -d "$wd" ] || continue
-        crumb container "conteneur $cname ($state) : projet compose $wd supprimé"
+        crumb container "container $cname ($state): compose project $wd deleted"
     done <<< "$list"
 fi
 
 if [ $summary = 1 ]; then
     total=0 parts=()
-    for kind in "branch:branche:branches" "worktree:worktree:worktrees" "server:serveur:serveurs" \
-        "scratch:dossier de scratch:dossiers de scratch" "container:conteneur:conteneurs"; do
+    for kind in "branch:branch:branches" "worktree:worktree:worktrees" "server:server:servers" \
+        "scratch:scratch folder:scratch folders" "container:container:containers"; do
         IFS=: read -r key one many <<< "$kind"
         n=${count[$key]:-0}
         [ "$n" -gt 0 ] || continue
         total=$((total + n))
         parts+=("$n $([ "$n" = 1 ] && echo "$one" || echo "$many")")
     done
-    [ $total -gt 0 ] && echo "Miettes : $total ($(IFS='|'; echo "${parts[*]}" | sed 's/|/, /g')) → /menage"
+    [ $total -gt 0 ] && echo "Crumbs: $total ($(IFS='|'; echo "${parts[*]}" | sed 's/|/, /g')) → /tidy"
 fi
 exit 0

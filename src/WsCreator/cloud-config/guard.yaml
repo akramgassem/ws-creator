@@ -1,9 +1,9 @@
 #cloud-config
-# Fragment guard : garde-fous valables pour tout ce qui passe par git, humain ou agent.
-# Les fichiers viennent de files/ (usr/local/bin/machine-*, usr/local/lib/ws-creator/git-hooks/) ;
-# la skill /menage (usr/local/share/ws-creator/claude/skills/) est posée dans ~/.claude par le module agent ;
-# les réglages de la machine (etc/ws-creator/guard.conf, etc/ws-creator/denylist.sha256) de
-# machines/<nom>/files/. Ici : droits, hooks de toute la machine, config git système.
+# guard fragment: guardrails for everything that goes through git, human or agent.
+# The files come from files/ (usr/local/bin/machine-*, usr/local/lib/ws-creator/git-hooks/);
+# the /tidy skill (usr/local/share/ws-creator/claude/skills/) is put in ~/.claude by the agent module;
+# the machine's settings (etc/ws-creator/guard.conf, etc/ws-creator/denylist.sha256) come from
+# machines/<name>/files/. Here: permissions, machine-wide hooks, system git config.
 merge_how: 'dict(recurse_array,no_replace)+list(append)'
 
 runcmd:
@@ -13,8 +13,8 @@ runcmd:
     hooks=/etc/ws-creator/hooks
     chmod 755 /usr/local/bin/machine-state /usr/local/bin/machine-leftovers /usr/local/bin/machine-crumbs \
         /usr/local/bin/machine-prune-branch "$lib"/*
-    # Tous les hooks passent par dispatch, qui enchaîne avec ceux du dépôt. reference-transaction
-    # n'y est pas : appelé à chaque mise à jour de référence, il ralentirait tout git.
+    # Every hook goes through dispatch, which chains to the repo's own. reference-transaction is
+    # left out: called on every ref update, it would slow down all of git.
     rm -rf "$hooks"
     mkdir -p "$hooks"
     for h in applypatch-msg pre-applypatch post-applypatch pre-commit pre-merge-commit \

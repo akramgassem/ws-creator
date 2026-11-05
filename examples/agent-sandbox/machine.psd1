@@ -1,14 +1,14 @@
 @{
-    # Côté Windows d'agent-sandbox ; la machine elle-même est décrite dans user-data.yaml.
+    # Windows side of agent-sandbox; the machine itself is described in user-data.yaml.
     BaseDistribution  = 'Ubuntu-24.04'
-    Location          = 'C:\WSL'   # disque virtuel dans <Location>\<nom>, hors du dépôt
+    Location          = 'C:\WSL'   # virtual disk in <Location>\<name>, outside the repo
 
-    CloudConfig       = @('base', 'mise', 'guard', 'podman', 'ssh')   # cloud-config\<nom>.yaml, puis user-data.yaml
-    Modules           = @('agent')                                    # modules\<nom>.sh, joués ensuite
+    CloudConfig       = @('base', 'mise', 'guard', 'podman', 'ssh')   # cloud-config\<name>.yaml, then user-data.yaml
+    Modules           = @('agent')                                    # modules\<name>.sh, run afterwards
 
-    # uniques par machine (pile réseau WSL partagée) : ws-creator les contrôle entre machines, et
-    # vérifie qu'ils concordent avec user-data.yaml (default_subnet, Port, ssh_authorized_keys)
+    # unique per machine (shared WSL network stack): ws-creator checks them across machines, and
+    # checks they match user-data.yaml (default_subnet, Port, ssh_authorized_keys)
     PodmanSubnet      = '10.89.23.0/24'
-    Ssh               = @{ Port = 2223; PublicKey = 'id_ed25519.pub' }   # clé dans ~\.ssh
-    AgentInstructions = 'AGENTS.md'   # dans ce dossier -> ~/.claude/CLAUDE.md (lu par Claude Code)
+    Ssh               = @{ Port = 2223; PublicKey = 'id_ed25519.pub' }   # key in ~\.ssh
+    AgentInstructions = 'AGENTS.md'   # in this folder -> ~/.claude/CLAUDE.md (read by Claude Code)
 }

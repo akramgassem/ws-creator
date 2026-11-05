@@ -1,8 +1,8 @@
 function Invoke-WsCreator {
     <#
     .SYNOPSIS
-    La commande ws-creator (alias) : une sous-commande = une fonction du module
-    (Get-Help New-WsCreatorMachine, Get-Help Update-WsCreatorMachine…).
+    The ws-creator command (alias): one subcommand = one module function
+    (Get-Help New-WsCreatorMachine, Get-Help Update-WsCreatorMachine...).
     .EXAMPLE
     ws-creator new agent-sandbox -Apply
     #>
@@ -13,11 +13,11 @@ function Invoke-WsCreator {
         [string]$Command,
 
         [Parameter(Position = 1)]
-        [string]$Machine,    # dossier <WS_CREATOR_MACHINES>\<nom>
+        [string]$Machine,    # folder <WS_CREATOR_MACHINES>\<name>
 
-        [string[]]$Only,     # ex. -Only mise,ssh : seulement ces fragments ou modules
-        [switch]$Apply,      # sans lui, aperçu
-        [switch]$Force       # purge malgré du travail non poussé
+        [string[]]$Only,     # e.g. -Only mise,ssh: only these fragments or modules
+        [switch]$Apply,      # without it, dry run
+        [switch]$Force       # purge despite unpushed work
     )
     $timer = [Diagnostics.Stopwatch]::StartNew()
 
@@ -35,6 +35,6 @@ function Invoke-WsCreator {
     }
 
     if ($Apply -and $Command -in 'new', 'apply', 'image') {
-        Write-Host ('Durée : {0:mm\:ss}' -f $timer.Elapsed)
+        Write-Host ('Duration: {0:mm\:ss}' -f $timer.Elapsed)
     }
 }
