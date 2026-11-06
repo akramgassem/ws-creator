@@ -1,11 +1,24 @@
 # A machine = machines\<name>\: machine.psd1 (Windows side), user-data.yaml (the machine's
 # cloud-config), files\ (system files specific to the machine), and what machine.psd1 refers to.
 
-function Get-MachineDir([string]$Name) { Join-Path -Path $script:MachinesDir -ChildPath $Name }
+function Get-MachinesDir {
+    if ($script:MachinesDir) { return $script:MachinesDir }
+    if ($env:WS_CREATOR_MACHINES) { return $env:WS_CREATOR_MACHINES }
+    Join-Path -Path $env:APPDATA -ChildPath 'ws-creator\machines'
+}
+
+function Get-ImagesDir {
+    if ($script:ImagesDir) { return $script:ImagesDir }
+    if ($env:WS_CREATOR_IMAGES) { return $env:WS_CREATOR_IMAGES }
+    Join-Path -Path $env:LOCALAPPDATA -ChildPath 'ws-creator\images'
+}
+
+function Get-MachineDir([string]$Name) { Join-Path -Path (Get-MachinesDir) -ChildPath $Name }
 
 function Get-MachineName {
-    if (-not (Test-Path -Path $script:MachinesDir)) { return }
-    Get-ChildItem -Path $script:MachinesDir -Directory |
+    $root = Get-MachinesDir
+    if (-not (Test-Path -Path $root)) { return }
+    Get-ChildItem -Path $root -Directory |
         Where-Object { Test-Path -Path (Join-Path -Path $_.FullName -ChildPath 'machine.psd1') } |
         ForEach-Object { $_.Name }
 }
@@ -23,7 +36,16 @@ function Get-UserDataValue([string]$Text) {
 # -Dir: a machine outside WS_CREATOR_MACHINES (a template, or the copy init is preparing)
 function Get-Machine([string]$Name, [string]$Dir) {
     if (-not $Name) { throw 'Machine name missing (machines\<name>\)' }
+    $described = -not $Dir   # a machine of WS_CREATOR_MACHINES ($dir below is the same variable as $Dir)
     $dir = if ($Dir) { $Dir } else { Get-MachineDir $Name }
+    if ($described -and -not (Test-Path -Path $dir)) {
+        $root = Get-MachinesDir
+        $source = if ($script:MachinesDir -or $env:WS_CREATOR_MACHINES) { 'WS_CREATOR_MACHINES' }
+                  else { 'default folder: WS_CREATOR_MACHINES is not set in this session' }
+        $known = @(Get-MachineName)
+        $hint = if ($known) { "Machines there: $($known -join ', ')." } else { 'No machine there.' }
+        throw "Machine '$Name' not found in $root ($source). $hint If your machines live elsewhere, set WS_CREATOR_MACHINES to that folder; ws-creator list shows where it looks."
+    }
     $psd1 = Join-Path -Path $dir -ChildPath 'machine.psd1'
     $userData = Join-Path -Path $dir -ChildPath 'user-data.yaml'
     foreach ($file in $psd1, $userData) {

@@ -15,7 +15,7 @@ function Get-WsCreatorStatus {
     Write-Host "Distro      : $(if ($state) { $state } else { 'missing' })"
     if (-not $state) { return }
     Write-Host "vhdx disk   : $(Get-DiskSize $m)"
-    $image = Join-Path -Path $script:ImagesDir -ChildPath "$($m.Name).tar"
+    $image = Join-Path -Path (Get-ImagesDir) -ChildPath "$($m.Name).tar"
     if (Test-Path -Path $image) { Write-Host "Image       : $image ($((Get-Item $image).LastWriteTime.ToString('yyyy-MM-dd')))" }
     if ($state -ne 'Running') { Write-Host '(starting the distro for the check)' }
     $script:StatusScript | wsl -d $m.Name -u root --exec env "WS_CREATOR_USER=$($m.User)" bash -c "tr -d '\r' | bash -s"

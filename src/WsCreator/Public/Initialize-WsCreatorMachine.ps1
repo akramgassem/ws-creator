@@ -86,7 +86,7 @@ function Initialize-WsCreatorMachine {
         foreach ($line in $leftovers) { Write-Warning "still holds the template's user, check it: $line" }
 
         Invoke-Step "write $target" {
-            New-Item -ItemType Directory -Force -Path $script:MachinesDir | Out-Null
+            New-Item -ItemType Directory -Force -Path (Get-MachinesDir) | Out-Null
             Copy-Item -Recurse -Path $copy -Destination $target
         }
         if ($Apply) { Write-Host "Next: edit $target if needed, then ws-creator new $Name -Apply" }

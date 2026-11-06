@@ -14,9 +14,11 @@ function Invoke-WsCreator {
       code <machine>           Open-WsCreatorCode            VS Code on the machine's ~/src
       list                     Get-WsCreatorMachineList      templates, machines, distros
       doctor                   Test-WsCreatorHost            workstation check
+      help                     Get-Help ws-creator           this help (also --help, or no subcommand)
     Commands that change something only show what they would do unless -Apply is given.
+    Machines are read from WS_CREATOR_MACHINES, or %APPDATA%\ws-creator\machines when it is not set.
     .PARAMETER Command
-    The subcommand.
+    The subcommand. Without one, shows this help.
     .PARAMETER Machine
     The machine (folder <WS_CREATOR_MACHINES>\<name>); for init, the template.
     .PARAMETER Name
@@ -50,8 +52,9 @@ function Invoke-WsCreator {
     #>
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory, Position = 0)]
-        [ValidateSet('init', 'new', 'apply', 'list', 'status', 'code', 'stop', 'purge', 'image', 'doctor')]
+        # completion only: an unknown command gets a message pointing to help (below), not a ValidateSet error
+        [Parameter(Position = 0)]
+        [ArgumentCompletions('init', 'new', 'apply', 'list', 'status', 'code', 'stop', 'purge', 'image', 'doctor', 'help')]
         [string]$Command,
 
         [Parameter(Position = 1)]
@@ -71,6 +74,11 @@ function Invoke-WsCreator {
         [string]$Subnet,
         [string]$Location
     )
+    $commands = 'init', 'new', 'apply', 'list', 'status', 'code', 'stop', 'purge', 'image', 'doctor'
+    if (-not $Command -or $Command -in 'help', '--help', '/?') { return Get-Help -Name Invoke-WsCreator }
+    if ($Command -notin $commands) {
+        throw "Unknown command '$Command'. Commands: $($commands -join ', '). Help: ws-creator help"
+    }
     $timer = [Diagnostics.Stopwatch]::StartNew()
 
     switch ($Command) {

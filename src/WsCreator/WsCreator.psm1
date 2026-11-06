@@ -9,9 +9,11 @@ $env:WSL_UTF8 = '1'
 
 $script:Root = $PSScriptRoot   # cloud-config\, files\, modules\, templates\
 # what belongs to the user lives outside the module, in the usual Windows locations:
-# config in %APPDATA% (described machines), rebuildable data in %LOCALAPPDATA% (images)
-$script:MachinesDir = if ($env:WS_CREATOR_MACHINES) { $env:WS_CREATOR_MACHINES } else { Join-Path -Path $env:APPDATA -ChildPath 'ws-creator\machines' }
-$script:ImagesDir = if ($env:WS_CREATOR_IMAGES) { $env:WS_CREATOR_IMAGES } else { Join-Path -Path $env:LOCALAPPDATA -ChildPath 'ws-creator\images' }
+# config in %APPDATA% (described machines), rebuildable data in %LOCALAPPDATA% (images).
+# Resolved on each call (Get-MachinesDir, Get-ImagesDir), so setting WS_CREATOR_MACHINES or
+# WS_CREATOR_IMAGES after the module is loaded takes effect; these two only override (tests).
+$script:MachinesDir = $null
+$script:ImagesDir = $null
 $script:CatalogsDir = Join-Path -Path $env:LOCALAPPDATA -ChildPath 'ws-creator\catalogs'   # clones of git catalogs
 $script:SshDir = Join-Path -Path $HOME -ChildPath '.ssh'
 $script:Apply = $false   # set by each command: without -Apply, dry run only

@@ -233,6 +233,48 @@ Describe 'Select-MachinePart' {
     }
 }
 
+Describe 'Machines folder' {
+    BeforeEach { $script:SavedEnv = $env:WS_CREATOR_MACHINES }
+    AfterEach { $env:WS_CREATOR_MACHINES = $script:SavedEnv }
+
+    It 'follows WS_CREATOR_MACHINES set after the module is loaded' {
+        $env:WS_CREATOR_MACHINES = 'X:\one'
+        InModuleScope WsCreator { Get-MachinesDir } | Should -Be 'X:\one'
+        $env:WS_CREATOR_MACHINES = 'X:\two'
+        InModuleScope WsCreator { Get-MachinesDir } | Should -Be 'X:\two'
+    }
+
+    It 'says where it looked and that WS_CREATOR_MACHINES is not set' {
+        $env:WS_CREATOR_MACHINES = $null
+        InModuleScope WsCreator {
+            $saved = $env:APPDATA
+            try {
+                $env:APPDATA = (Get-PSDrive TestDrive).Root
+                { Get-Machine 'nowhere' } | Should -Throw "*'nowhere' not found in*WS_CREATOR_MACHINES is not set*"
+            } finally { $env:APPDATA = $saved }
+        }
+    }
+
+    It 'lists the machines it does see' {
+        New-Item -ItemType Directory -Force -Path 'TestDrive:\seen\box' | Out-Null
+        Set-Content -Path 'TestDrive:\seen\box\machine.psd1' -Value '@{}'
+        $env:WS_CREATOR_MACHINES = Join-Path (Get-PSDrive TestDrive).Root 'seen'
+        InModuleScope WsCreator { { Get-Machine 'nowhere' } | Should -Throw '*Machines there: box.*' }
+    }
+}
+
+Describe 'ws-creator help' {
+    It 'shows the help for help, --help and no subcommand' {
+        foreach ($c in 'help', '--help', '') {
+            (Invoke-WsCreator $c | Out-String) | Should -Match 'Subcommands'
+        }
+    }
+
+    It 'points to help for an unknown command' {
+        { Invoke-WsCreator 'panda' } | Should -Throw "*Unknown command 'panda'*ws-creator help*"
+    }
+}
+
 Describe 'Test-MachineConflict' {
     BeforeEach { InModuleScope WsCreator { $script:Saved = $script:Root, $script:MachinesDir, $script:SshDir; $t = (Get-PSDrive TestDrive).Root; $script:Root = $t; $script:MachinesDir = Join-Path $t 'machines'; $script:SshDir = Join-Path $t 'ssh' } }
     AfterEach { InModuleScope WsCreator { $script:Root, $script:MachinesDir, $script:SshDir = $script:Saved } }
