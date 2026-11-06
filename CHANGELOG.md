@@ -4,7 +4,7 @@ All notable changes to this project. The format follows [Keep a Changelog](https
 and versions follow [Semantic Versioning](https://semver.org/). Each release on the
 PowerShell Gallery has a matching GitHub Release, whose notes are the section below.
 
-## [Unreleased]
+## [0.2.2] - 2026-11-06
 
 ### Added
 
