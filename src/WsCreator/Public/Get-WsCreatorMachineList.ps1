@@ -33,7 +33,7 @@ function Get-WsCreatorMachineList {
     foreach ($s in $missing) { Write-Host "  ($($s.Display) not fetched yet: ws-creator list -Refresh)" }
 
     Write-Host ''
-    Write-Host "Machines ($(Format-UserPath $script:MachinesDir))"
+    Write-Host "Machines ($(Format-UserPath (Get-MachinesDir)))"
     if (-not $names) { Write-Host '  (none: ws-creator init <template> <name>)' }
     foreach ($name in $names) {
         Write-Host ('  {0}{1}' -f $name.PadRight($width), (Get-MachineProvenance (Get-MachineDir $name)))

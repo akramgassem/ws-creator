@@ -4,6 +4,24 @@ All notable changes to this project. The format follows [Keep a Changelog](https
 and versions follow [Semantic Versioning](https://semver.org/). Each release on the
 PowerShell Gallery has a matching GitHub Release, whose notes are the section below.
 
+## [Unreleased]
+
+### Added
+
+- `ws-creator help` (also `--help`, or no subcommand) shows the command's help.
+
+### Changed
+
+- An unknown subcommand says so, lists the commands and points to `ws-creator help`, instead
+  of a ValidateSet error.
+- A machine that is not found says which folder was searched, whether `WS_CREATOR_MACHINES` is
+  set, and which machines are there.
+
+### Fixed
+
+- `WS_CREATOR_MACHINES` and `WS_CREATOR_IMAGES` set after the module is loaded now take effect
+  (they were read once, at import).
+
 ## [0.2.1] - 2026-11-05
 
 ### Added
